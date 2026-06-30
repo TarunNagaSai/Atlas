@@ -1,0 +1,115 @@
+"""Core data structures shared across the ingestion/retrieval pipeline.
+
+These are kept plain and serializable so the whole index can be persisted to a
+store and inspected by hand — observability beats magic.
+"""
+
+from __future__ import annotations
+
+import hashlib
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
+
+
+def _hash(*parts: str) -> str:
+    h = hashlib.sha1()
+    for p in parts:
+        h.update(p.encode("utf-8"))
+    return h.hexdigest()[:16]
+
+
+def book_title(source: str) -> str:
+    """Human-readable book name derived from a source path (filename stem).
+
+    ``/Users/x/Downloads/annualreport-2025.pdf`` -> ``annualreport-2025``.
+    Used as the display label in the frontend book picker.
+    """
+    return Path(source).stem or source
+
+
+def make_book_id(name: str) -> str:
+    """Deterministic id shared by every chunk of one book.
+
+    Hash of the normalized (trimmed, lowercased) book name, so re-uploading the
+    same book yields the same id — book-level idempotency, mirroring how
+    ``Chunk.make_id`` makes chunk-level re-ingestion idempotent.
+    """
+    return _hash(name.strip().lower())
+
+
+@dataclass
+class Document:
+    """A raw source document before chunking."""
+
+    text: str
+    source: str  # file path / URL / id
+    metadata: dict[str, Any] = field(default_factory=dict)
+    # Book identity shared by every chunk of this source. Derived from the
+    # filename stem when not supplied, so all pages of one PDF carry the same
+    # book_id and the agent can scope retrieval to a single book.
+    book_id: str = ""
+    title: str = ""
+    # Transient: raw single-page PDF bytes embedded multimodally (text + images
+    # + charts on the page) by gemini-embedding-2. Never persisted — only the
+    # resulting vector is stored. None for plain-text/docx sources.
+    embed_pdf: bytes | None = field(default=None, repr=False, compare=False)
+
+    def __post_init__(self) -> None:
+        if not self.title:
+            self.title = book_title(self.source)
+        if not self.book_id:
+            self.book_id = make_book_id(self.title)
+
+
+@dataclass
+class Chunk:
+    """A retrievable child chunk. ``parent_text`` is the larger block we swap in
+    at generation time (parent-document retrieval)."""
+
+    id: str
+    text: str
+    source: str
+    parent_id: str
+    parent_text: str
+    book_id: str = ""  # shared by all chunks of one book (see Document)
+    title: str = ""  # display name for the book picker
+    metadata: dict[str, Any] = field(default_factory=dict)
+    # Transient: single-page PDF bytes for multimodal embedding. When set, the
+    # store embeds this (capturing images/charts) instead of ``text``. Excluded
+    # from to_dict/from_dict and the DB row — only the vector survives.
+    embed_pdf: bytes | None = field(default=None, repr=False, compare=False)
+
+    @staticmethod
+    def make_id(source: str, text: str, idx: int) -> str:
+        return _hash(source, str(idx), text[:64])
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "text": self.text,
+            "source": self.source,
+            "parent_id": self.parent_id,
+            "parent_text": self.parent_text,
+            "book_id": self.book_id,
+            "title": self.title,
+            "metadata": self.metadata,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> "Chunk":
+        return cls(**d)
+
+
+@dataclass
+class Scored:
+    """A chunk paired with a relevance score and provenance about how it was found."""
+
+    chunk: Chunk
+    score: float
+    how: str = ""  # e.g. "dense", "bm25", "rrf", "rerank"
+
+    @property
+    def citation(self) -> str:
+        loc = self.chunk.metadata.get("loc")
+        return f"{self.chunk.source}" + (f"#{loc}" if loc else "")
