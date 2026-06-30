@@ -1,0 +1,43 @@
+[project]
+name = "Atlas-backend"
+version = "0.1.0"
+description = "A financial AI reporting platform"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    # Cap <0.137: FastAPI 0.137 added the internal `_IncludedRouter` route type, which
+    # the OTel FastAPI instrumentation Logfire bundles (<=0.64b0) can't read (.path) and
+    # 500s on every request. Lift this once a released instrumentation flattens routes.
+    "fastapi>=0.115,<0.137",
+    "google-genai>=1.20.0",
+    "langfuse>=4.9.1",
+    "logfire[fastapi,psycopg2,httpx]>=3.0",
+    "networkx>=3.2",
+    "numpy>=1.26",
+    "openai>=2.43.0",
+    "openinference-instrumentation-google-genai>=1.1.0",
+    "openpyxl>=3.1",
+    "pdfplumber>=0.11.10",
+    "pgvector>=0.4.2",
+    "psycopg2-binary>=2.9.12",
+    "pydantic>=2.7",
+    "pypdf>=4.2",
+    "python-docx>=1.0",
+    "python-dotenv>=1.0",
+    "python-multipart>=0.0.9",
+    "rank-bm25>=0.2.2",
+    "rich>=13.7",
+    "tenacity>=8.3",
+    "typer>=0.12",
+    "uvicorn[standard]>=0.30",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
