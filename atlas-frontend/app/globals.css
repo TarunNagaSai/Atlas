@@ -1,0 +1,383 @@
+@import "tailwindcss";
+
+:root {
+  /* Surfaces */
+  --background: #f5f6f8;
+  --surface: #ffffff;
+  --surface-2: #f3f4f6;
+  --surface-3: #e9ebef;
+
+  /* Lines */
+  --border: #e5e7eb;
+  --border-strong: #d6dae1;
+
+  /* Text */
+  --foreground: #0f1623;
+  --muted: #5b6472;
+  --subtle: #8b93a1;
+
+  /* Brand — finance emerald */
+  --accent: #047857;
+  --accent-hover: #065f46;
+  --accent-fg: #ffffff;
+  --accent-soft: #e7f5ef;
+  --accent-ring: rgba(4, 120, 87, 0.35);
+
+  /* Semantic */
+  --positive: #047857;
+  --negative: #dc2626;
+  --warning: #b45309;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(15, 22, 35, 0.06);
+  --shadow-md: 0 4px 14px rgba(15, 22, 35, 0.08);
+  --shadow-lg: 0 12px 32px rgba(15, 22, 35, 0.12);
+}
+
+.dark {
+  /* Surfaces */
+  --background: #0d1117;
+  --surface: #161b22;
+  --surface-2: #1c2128;
+  --surface-3: #262c36;
+
+  /* Lines */
+  --border: #30363d;
+  --border-strong: #3d4450;
+
+  /* Text */
+  --foreground: #e6edf3;
+  --muted: #8b949e;
+  --subtle: #6e7681;
+
+  /* Brand — finance emerald */
+  --accent: #34d399;
+  --accent-hover: #10b981;
+  --accent-fg: #0d1117;
+  --accent-soft: #0d2a1e;
+  --accent-ring: rgba(52, 211, 153, 0.35);
+
+  /* Semantic */
+  --positive: #34d399;
+  --negative: #f87171;
+  --warning: #fbbf24;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  /* Keep the app from scrolling horizontally and stop drawer/rubber-band
+     overscroll from bleeding into the page on mobile. */
+  overflow-x: hidden;
+  overscroll-behavior: none;
+}
+
+/* Numeric data reads cleaner with tabular figures + mono. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+.font-mono {
+  font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
+}
+
+/* Thin, restrained scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  border-radius: 9999px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--subtle);
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Subtle entrance for streamed messages */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-rise {
+  animation: rise 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Rendered markdown (assistant answers from markdown-it).
+   Tailwind's preflight strips default element styling, so style the rendered
+   HTML explicitly using the design tokens. Unlayered rules beat Tailwind's
+   @layer base, so these reliably win over preflight. */
+.markdown {
+  font-size: 0.875rem;
+  line-height: 1.65;
+  color: var(--foreground);
+  word-break: break-word;
+}
+.markdown > :first-child {
+  margin-top: 0;
+}
+.markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown p {
+  margin: 0.75em 0;
+}
+
+.markdown h1,
+.markdown h2,
+.markdown h3,
+.markdown h4 {
+  margin: 1.4em 0 0.6em;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+.markdown h1 {
+  font-size: 1.4em;
+}
+.markdown h2 {
+  font-size: 1.2em;
+}
+.markdown h3 {
+  font-size: 1.05em;
+}
+.markdown h4 {
+  font-size: 1em;
+}
+
+.markdown ul,
+.markdown ol {
+  margin: 0.75em 0;
+  padding-left: 1.4em;
+}
+.markdown ul {
+  list-style: disc;
+}
+.markdown ol {
+  list-style: decimal;
+}
+.markdown li {
+  margin: 0.3em 0;
+}
+.markdown li::marker {
+  color: var(--subtle);
+}
+.markdown li > ul,
+.markdown li > ol {
+  margin: 0.3em 0;
+}
+
+.markdown a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.markdown a:hover {
+  color: var(--accent-hover);
+}
+
+.markdown strong {
+  font-weight: 600;
+}
+.markdown em {
+  font-style: italic;
+}
+
+.markdown code {
+  font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
+  font-size: 0.85em;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+}
+.markdown pre {
+  margin: 0.85em 0;
+  padding: 0.85rem 1rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  overflow-x: auto;
+}
+.markdown pre code {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font-size: 0.85em;
+}
+
+.markdown blockquote {
+  margin: 0.85em 0;
+  padding: 0.2em 0 0.2em 1em;
+  border-left: 3px solid var(--border-strong);
+  color: var(--muted);
+}
+
+.markdown hr {
+  margin: 1.4em 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+
+.markdown table {
+  width: 100%;
+  margin: 0.85em 0;
+  border-collapse: collapse;
+  font-size: 0.9em;
+}
+.markdown th,
+.markdown td {
+  border: 1px solid var(--border);
+  padding: 0.4em 0.6em;
+  text-align: left;
+}
+.markdown th {
+  background: var(--surface-2);
+  font-weight: 600;
+}
+
+/* KaTeX math */
+.markdown .katex-display {
+  margin: 0.85em 0;
+  padding: 0.25em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.markdown .katex {
+  font-size: 1.05em;
+}
+
+/* Inline [Source: …] citation chips */
+.markdown .cite-ref {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.05em;
+  margin-left: 0.2em;
+  padding: 0 0.3em;
+  font-size: 0.62em;
+  font-weight: 600;
+  line-height: 1.5;
+  vertical-align: super;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 4px;
+}
+
+/* Reasoning prose inside the "thinking" panel. Lighter than answer markdown:
+   muted body text with the model's bold section headers promoted to foreground,
+   matching the Gemini-style thought summaries. */
+.thinking-prose {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--muted);
+  word-break: break-word;
+}
+.thinking-prose > :first-child {
+  margin-top: 0;
+}
+.thinking-prose > :last-child {
+  margin-bottom: 0;
+}
+.thinking-prose p {
+  margin: 0.4em 0;
+}
+.thinking-prose strong {
+  font-weight: 600;
+  color: var(--foreground);
+}
+.thinking-prose ul,
+.thinking-prose ol {
+  margin: 0.4em 0;
+  padding-left: 1.2em;
+}
+.thinking-prose ul {
+  list-style: disc;
+}
+.thinking-prose ol {
+  list-style: decimal;
+}
+.thinking-prose li {
+  margin: 0.2em 0;
+}
+.thinking-prose code {
+  font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
+  font-size: 0.85em;
+  background: var(--surface-2);
+  border-radius: 4px;
+  padding: 0.1em 0.3em;
+}
+
+/* Shimmer on the "Thinking…" label while the agent is still working. */
+@keyframes thinking-shimmer {
+  0% {
+    background-position: 200% center;
+  }
+  100% {
+    background-position: -200% center;
+  }
+}
+.thinking-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--muted) 0%,
+    var(--foreground) 25%,
+    var(--muted) 50%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: thinking-shimmer 2.2s linear infinite;
+}
+
+/* Typing dots */
+@keyframes blink {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+.dot {
+  animation: blink 1.4s infinite both;
+}
+.dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
