@@ -281,7 +281,7 @@ export function useChatStream({
               pending: false,
               content:
                 m.content ||
-                `Sorry — something went wrong reaching the backend.\n\n${
+                `Sorry — Process interrupted.\n\n${
                   err instanceof Error ? err.message : String(err)
                 }`,
             }));
