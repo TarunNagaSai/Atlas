@@ -14,7 +14,14 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// Absolute base for OG/Twitter image URLs. Social scrapers require absolute
+// URLs, so the relative image path from app/opengraph-image.tsx is resolved
+// against this. Override with NEXT_PUBLIC_SITE_URL (e.g. for previews).
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://atlas.avipra.com";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: "Atlas — Financial Research Copilot",
   description:
     "Grounded answers over your filings, contracts, and reports with an advanced RAG pipeline.",
@@ -23,14 +30,12 @@ export const metadata: Metadata = {
     description:
       "Agentic RAG over your filings, contracts, and reports — with GraphRAG, hybrid search, and grounded citations.",
     type: "website",
-    images: [{ url: "/opengraph-image", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Atlas — Financial Research Copilot",
     description:
       "Agentic RAG over your filings, contracts, and reports — with GraphRAG, hybrid search, and grounded citations.",
-    images: ["/opengraph-image"],
   },
 };
 
