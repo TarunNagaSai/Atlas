@@ -17,14 +17,14 @@ Until then, ingestion runs in dry-run mode and never touches this store.
 from __future__ import annotations
 
 import json
-import re
 from typing import Any
 
 import logfire
 import numpy as np
 
 from app.llm.embedding import GeminiEmbedding, get_embedder
-from app.schema.documents import Chunk, Scored
+from app.rag.bm25 import BM25Index
+from app.schema.documents import Chunk, Scored, bm25_tokenize
 from app.schema.llm_settings import Settings, get_settings
 
 # Retrieval knobs (local defaults — ingestion doesn't depend on these).
@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS chunks (
     book_id     TEXT        NOT NULL DEFAULT '',
     title       TEXT        NOT NULL DEFAULT '',
     metadata    JSONB       NOT NULL DEFAULT '{{}}',
+    bm25_tokens TEXT[]      NOT NULL DEFAULT '{{}}',
     embedding   vector({dim})
 );
 
@@ -53,10 +54,6 @@ CREATE INDEX IF NOT EXISTS chunks_hnsw_idx
 
 CREATE INDEX IF NOT EXISTS chunks_book_id_idx ON chunks (book_id);
 """
-
-
-def _tokenize(text: str) -> list[str]:
-    return re.findall(r"[A-Za-z0-9_]+", text.lower())
 
 
 def _rrf(ranked_lists: list[list[str]], k: int = RRF_K) -> dict[str, float]:
@@ -74,6 +71,10 @@ class HybridStore:
         self.s = settings or get_settings()
         self._embedder = embedder
         self._conn = None
+        # Lazily-built BM25 indexes, one per book scope ("" == all books). The
+        # in-memory ``rank_bm25`` corpus is loaded from the DB on first lexical
+        # search and reused across requests; dropped on new writes (see add()).
+        self._bm25: dict[str, BM25Index] = {}
 
     @property
     def embedder(self) -> GeminiEmbedding:
@@ -131,7 +132,7 @@ class HybridStore:
                 psycopg2.extras.execute_values(
                     cur,
                     """
-                    INSERT INTO chunks (id, text, source, parent_id, parent_text, book_id, title, metadata, embedding)
+                    INSERT INTO chunks (id, text, source, parent_id, parent_text, book_id, title, metadata, bm25_tokens, embedding)
                     VALUES %s
                     ON CONFLICT (id) DO NOTHING
                     """,
@@ -145,12 +146,17 @@ class HybridStore:
                             c.book_id,
                             c.title,
                             json.dumps(c.metadata),
+                            c.bm25_tokens,
                             embeddings[i].tolist(),
                         )
                         for i, c in enumerate(chunks)
                     ],
                 )
             conn.commit()
+            # New rows invalidate every cached BM25 corpus; rebuild lazily next
+            # time a lexical search runs (in-process only — a separate query
+            # server picks the new rows up on its next cold build / restart).
+            self._bm25.clear()
             logfire.info("stored {n} chunks in pgvector", n=len(chunks))
 
     def _embed_chunks(self, chunks: list[Chunk]) -> np.ndarray:
@@ -204,40 +210,47 @@ class HybridStore:
             cur.execute(sql, params)
             return [(row[0], row[1]) for row in cur.fetchall()]
 
-    def lexical_search(
+    def bm25_search(
         self,
         query: str,
         top_k: int,
-        source_filter: str | None = None,
         book_id: str | None = None,
     ) -> list[tuple[str, float]]:
+        """Lexical retrieval via an in-memory ``rank_bm25`` index.
+
+        Replaces the old Postgres full-text path: BM25's tf·idf·length scoring
+        is stronger for the exact-term matches (tickers, defined terms, figures)
+        this complements dense search on. The index is built from the cached
+        ``bm25_tokens`` and scoped per book, so scores use that book's own term
+        statistics (a term common in one filing but rare overall stays
+        discriminating within its book).
+        """
+        idx = self._get_bm25(book_id)
+        return idx.search(bm25_tokenize(query), top_k)
+
+    def _get_bm25(self, book_id: str | None) -> BM25Index:
+        key = book_id or ""
+        idx = self._bm25.get(key)
+        if idx is None:
+            idx = self._build_bm25(book_id)
+            self._bm25[key] = idx
+        return idx
+
+    def _build_bm25(self, book_id: str | None) -> BM25Index:
+        """Load ``(id, bm25_tokens)`` for the scope and build a fresh index."""
         conn = self._connect()
-        ts_query = " & ".join(_tokenize(query)) or "x"
-        conds: list[str] = []
-        filt_params: list[Any] = []
-        if book_id:
-            conds.append("book_id = %s")
-            filt_params.append(book_id)
-        if source_filter:
-            conds.append("source LIKE %s")
-            filt_params.append(f"%{source_filter}%")
-        extra = ("AND " + " AND ".join(conds)) if conds else ""
-
-        sql = """
-            SELECT id,
-                   ts_rank(to_tsvector('english', text), to_tsquery('english', %s)) AS score
-            FROM chunks
-            WHERE to_tsvector('english', text) @@ to_tsquery('english', %s)
-            {extra}
-            ORDER BY score DESC
-            LIMIT %s
-        """.format(extra=extra)
-
-        params: list[Any] = [ts_query, ts_query, *filt_params, top_k]
-
         with conn.cursor() as cur:
-            cur.execute(sql, params)
-            return [(row[0], float(row[1])) for row in cur.fetchall()]
+            if book_id:
+                cur.execute(
+                    "SELECT id, bm25_tokens FROM chunks WHERE book_id = %s", (book_id,)
+                )
+            else:
+                cur.execute("SELECT id, bm25_tokens FROM chunks")
+            rows = cur.fetchall()
+        with logfire.span("store.build_bm25", book_id=book_id, n_docs=len(rows)):
+            ids = [row[0] for row in rows]
+            corpus = [row[1] or [] for row in rows]
+            return BM25Index(ids, corpus)
 
     def hybrid_search(
         self,
@@ -251,7 +264,7 @@ class HybridStore:
             "store.hybrid_search", query=query, top_k=top_k, book_id=book_id
         ) as span:
             dense = self.dense_search(query_vec, DENSE_TOP_K, book_id=book_id)
-            lexical = self.lexical_search(query, LEXICAL_TOP_K, book_id=book_id)
+            lexical = self.bm25_search(query, LEXICAL_TOP_K, book_id=book_id)
             span.set_attribute("n_dense", len(dense))
             span.set_attribute("n_lexical", len(lexical))
 
@@ -276,7 +289,7 @@ class HybridStore:
         conn = self._connect()
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT id, text, source, parent_id, parent_text, book_id, title, metadata "
+                "SELECT id, text, source, parent_id, parent_text, book_id, title, metadata, bm25_tokens "
                 "FROM chunks WHERE id = ANY(%s)",
                 (ids,),
             )
@@ -290,6 +303,7 @@ class HybridStore:
                     book_id=row[5],
                     title=row[6],
                     metadata=row[7] if isinstance(row[7], dict) else json.loads(row[7]),
+                    bm25_tokens=row[8] or [],
                 )
                 for row in cur.fetchall()
             }
@@ -300,7 +314,7 @@ class HybridStore:
         conn = self._connect()
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT id, text, source, parent_id, parent_text, book_id, title, metadata "
+                "SELECT id, text, source, parent_id, parent_text, book_id, title, metadata, bm25_tokens "
                 "FROM chunks"
             )
             return [
@@ -313,6 +327,7 @@ class HybridStore:
                     book_id=row[5],
                     title=row[6],
                     metadata=row[7] if isinstance(row[7], dict) else json.loads(row[7]),
+                    bm25_tokens=row[8] or [],
                 )
                 for row in cur.fetchall()
             ]

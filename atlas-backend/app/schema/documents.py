@@ -7,9 +7,24 @@ store and inspected by hand — observability beats magic.
 from __future__ import annotations
 
 import hashlib
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+
+_BM25_WORD = re.compile(r"[A-Za-z0-9_]+")
+
+
+def bm25_tokenize(text: str) -> list[str]:
+    """Lowercase word tokenization for BM25 lexical retrieval.
+
+    Kept deliberately dependency-free and deterministic so the *exact same*
+    tokens are produced at ingest time (cached in ``Chunk.bm25_tokens`` and
+    persisted) and at query time (when tokenizing the incoming question).
+    ``rank_bm25`` scores a tokenized corpus against a tokenized query, so any
+    drift between the two tokenizers silently degrades recall.
+    """
+    return _BM25_WORD.findall(text.lower())
 
 
 def _hash(*parts: str) -> str:
@@ -75,10 +90,21 @@ class Chunk:
     book_id: str = ""  # shared by all chunks of one book (see Document)
     title: str = ""  # display name for the book picker
     metadata: dict[str, Any] = field(default_factory=dict)
+    # Precomputed lexical tokens for BM25 retrieval. Cached alongside the vector
+    # so the in-memory ``rank_bm25`` index can be built straight from the store
+    # without re-tokenizing every chunk on each query. Auto-derived from ``text``
+    # when not supplied (see __post_init__); persisted as a TEXT[] column.
+    bm25_tokens: list[str] = field(default_factory=list)
     # Transient: single-page PDF bytes for multimodal embedding. When set, the
     # store embeds this (capturing images/charts) instead of ``text``. Excluded
     # from to_dict/from_dict and the DB row — only the vector survives.
     embed_pdf: bytes | None = field(default=None, repr=False, compare=False)
+
+    def __post_init__(self) -> None:
+        # Derive tokens from text unless explicitly provided (e.g. loaded from
+        # the DB). Guarded so re-hydrated chunks keep their stored tokens.
+        if not self.bm25_tokens and self.text:
+            self.bm25_tokens = bm25_tokenize(self.text)
 
     @staticmethod
     def make_id(source: str, text: str, idx: int) -> str:
@@ -93,6 +119,7 @@ class Chunk:
             "parent_text": self.parent_text,
             "book_id": self.book_id,
             "title": self.title,
+            "bm25_tokens": self.bm25_tokens,
             "metadata": self.metadata,
         }
 

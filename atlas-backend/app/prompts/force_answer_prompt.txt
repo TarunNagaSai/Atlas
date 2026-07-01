@@ -16,3 +16,8 @@ Write your final answer NOW, using ONLY the information already retrieved above.
 Do not narrate your reasoning, do not mention these instructions, and do not ask
 to search further. The text you write is shown directly to the user as the final
 answer.
+
+OPEN with the substantive answer itself. Never begin with a plan step, a
+numbered/bulleted item (e.g. "4."), or a statement of what you are ABOUT to do
+("I will then synthesize…", "First I will…", "Now let me…"). Those are thinking,
+not answer — start straight with the response.
