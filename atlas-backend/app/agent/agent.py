@@ -288,15 +288,24 @@ async def run_agent(
                                 tool_call = event
                                 yield event
                             continue
-                        # ThoughtEvent / TextEvent (preamble or final answer).
+                        # ThoughtEvent streams live — it's always reasoning, never
+                        # mistaken for the answer. TextEvent is NOT streamed here:
+                        # until the turn finishes we can't tell whether it's the
+                        # final answer or a preamble the model wrote before a
+                        # tool call further down the same turn (it does this
+                        # despite being told not to). Buffer it and only forward
+                        # to the client once we know this turn had no tool call.
                         if isinstance(event, TextEvent):
                             turn_text.append(event.text)
+                            continue
                         yield event
 
                 # Final-answer turn: no tool call this turn means the model
                 # already streamed its answer above — we're done.
                 if tool_call is None:
                     answer = "".join(turn_text)
+                    if answer:
+                        yield TextEvent(text=answer)
                     turn_obs.update(output=answer)
                     run_obs.update(output=answer)
                     span.set_attribute("steps_used", hop)
