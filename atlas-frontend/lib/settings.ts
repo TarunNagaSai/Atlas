@@ -15,4 +15,4 @@ export const MODELS = [
 
 export type ModelId = (typeof MODELS)[number]["id"];
 
-export const DEFAULT_MODEL: ModelId = "gemini-3.5-flash";
+export const DEFAULT_MODEL: ModelId = "gemini-3.1-flash-lite";

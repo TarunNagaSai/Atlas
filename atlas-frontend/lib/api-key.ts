@@ -11,12 +11,9 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+import { isBrowser } from "@/lib/utils";
 
 const KEY = "atlas.gemini.key";
-
-function isBrowser(): boolean {
-  return typeof window !== "undefined";
-}
 
 /** The stored key, or "" during SSR / when the visitor hasn't entered one. */
 export function getApiKey(): string {

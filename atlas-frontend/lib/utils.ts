@@ -8,3 +8,7 @@ export function cn(...inputs: ClassValue[]) {
 export function uid() {
   return Math.random().toString(36).slice(2, 10);
 }
+
+export function isBrowser(): boolean {
+  return typeof window !== "undefined";
+}

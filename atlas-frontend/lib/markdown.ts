@@ -147,6 +147,17 @@ export function getMarkdown(): MarkdownIt {
 }
 
 /**
+ * Inline citation markers the model sprinkles into prose, e.g. `[2]`, `[2.]`,
+ * `[2, 3]` or `[Source: file#page]`. We hide sources from the answer for now,
+ * so strip every marker (and any space that precedes it) before rendering.
+ */
+const CITATION_MARKER = /\s?\[(?:Source:[^\]]*|\d+(?:\s*[.,]\s*\d+)*\.?)\]/g;
+
+function stripCitations(content: string): string {
+  return content.replace(CITATION_MARKER, "");
+}
+
+/**
  * Render assistant markdown to HTML and extract any inline source references.
  * Use `refs` to build the Sources list when the backend sends no structured
  * `sources` event.
@@ -156,6 +167,6 @@ export function renderMarkdown(content: string): {
   refs: SourceRef[];
 } {
   const env: MarkdownEnv = {};
-  const html = getMarkdown().render(content, env);
+  const html = getMarkdown().render(stripCitations(content), env);
   return { html, refs: env.refs ?? [] };
 }

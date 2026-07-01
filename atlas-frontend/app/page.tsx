@@ -240,6 +240,22 @@ export default function Home() {
     }
   }, [ready, refreshSessions]);
 
+  // Refetch sessions and start a fresh chat whenever the active book changes.
+  const prevBookRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!selectedBook) return;
+    if (prevBookRef.current === null) {
+      prevBookRef.current = selectedBook;
+      return;
+    }
+    if (prevBookRef.current === selectedBook) return;
+    prevBookRef.current = selectedBook;
+    selectedIdRef.current = null;
+    setActiveId(crypto.randomUUID());
+    clearMessages();
+    refreshSessions();
+  }, [selectedBook, clearMessages, refreshSessions]);
+
   // Client-side storage mode: persist the live transcript to localStorage and
   // keep the sidebar in sync. No-op in DB mode (the backend owns history there).
   useEffect(() => {
@@ -365,7 +381,7 @@ export default function Home() {
             {chatLoading ? (
               <ChatSkeleton />
             ) : messages.length === 0 ? (
-              <EmptyState onPick={handleSendGated} />
+              <EmptyState onPick={handleSendGated} selectedBook={selectedBook} />
             ) : (
               messages.map((m) => <MessageBubble key={m.id} message={m} />)
             )}

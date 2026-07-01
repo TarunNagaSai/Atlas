@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { track } from "@vercel/analytics";
 import { fetchBooks, type Book } from "@/lib/api";
+import { validateGeminiKey } from "@/lib/validate-gemini-key";
 
 interface BookPickerProps {
   /** "book" = step 1, "key" = step 2, null = closed */
@@ -25,18 +26,6 @@ interface BookPickerProps {
   onSaveKey: (key: string) => void;
   /** Called when the user opts to skip the key step */
   onSkip?: () => void;
-}
-
-async function validateGeminiKey(key: string): Promise<boolean> {
-  try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(key)}`,
-      { signal: AbortSignal.timeout(8000) },
-    );
-    return res.ok;
-  } catch {
-    return false;
-  }
 }
 
 export function BookPicker({ step, keyInvalid = false, onConfirmBook, onSaveKey, onSkip }: BookPickerProps) {

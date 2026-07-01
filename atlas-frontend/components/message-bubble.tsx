@@ -7,11 +7,12 @@ import {
   ImageIcon,
   TrendingUp,
 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { formatBytes } from "@/lib/attachments";
 import { renderMarkdown } from "@/lib/markdown";
 import { ThinkingSteps } from "./thinking-steps";
-import type { Message, MessageAttachment } from "@/types";
+import type { Citation, Message, MessageAttachment } from "@/types";
 
 const ATTACHMENT_ICON: Record<
   MessageAttachment["kind"],
@@ -113,9 +114,80 @@ export function MessageBubble({ message }: { message: Message }) {
               <Copy className="h-3.5 w-3.5" />
               Copy
             </button>
+            {(message.citations ?? []).length > 0 && (
+              <SourcesPopover citations={message.citations!} />
+            )}
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function SourcesPopover({ citations }: { citations: Citation[] }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={cn(
+          "flex items-center gap-1 rounded-md px-1.5 py-1 text-xs transition-colors",
+          open
+            ? "bg-[var(--surface-2)] text-[var(--foreground)]"
+            : "text-[var(--subtle)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
+        )}
+      >
+        Sources
+        <span className="rounded bg-[var(--accent-soft)] px-1 text-[10px] font-medium text-[var(--accent)]">
+          {citations.length}
+        </span>
+      </button>
+
+      {open && (
+        <div className="absolute bottom-full left-0 z-50 mb-2 w-72 rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-lg">
+          <div className="border-b border-[var(--border)] px-3 py-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--subtle)]">
+              Sources
+            </p>
+          </div>
+          <ul className="max-h-64 divide-y divide-[var(--border)] overflow-y-auto">
+            {citations.map((c, i) => (
+              <li key={c.id} className="flex gap-2.5 px-3 py-2.5">
+                <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded bg-[var(--accent-soft)] text-[10px] font-bold text-[var(--accent)]">
+                  {i + 1}
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-medium text-[var(--foreground)]">
+                    {c.source}
+                    {c.page != null && (
+                      <span className="ml-1 text-[var(--subtle)]">
+                        p.{c.page}
+                      </span>
+                    )}
+                  </p>
+                  <p className="mt-0.5 line-clamp-2 text-[11px] leading-relaxed text-[var(--subtle)]">
+                    {c.snippet}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

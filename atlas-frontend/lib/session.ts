@@ -15,6 +15,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { isBrowser } from "@/lib/utils";
 
 const SESSION_KEY = "atlas.session.id";
 const USAGE_PREFIX = "atlas.usage.";
@@ -31,10 +32,6 @@ export interface TokenUsage {
 }
 
 const EMPTY_USAGE: TokenUsage = { input: 0, output: 0, total: 0 };
-
-function isBrowser(): boolean {
-  return typeof window !== "undefined";
-}
 
 /**
  * Stable session id for this browser. Returns the cached value if present,

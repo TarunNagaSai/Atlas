@@ -13,6 +13,7 @@
  */
 
 import type { Message } from "@/types";
+import { isBrowser } from "@/lib/utils";
 
 const CHAT_PREFIX = "atlas.chat.";
 const INDEX_KEY = "atlas.chats.index";
@@ -22,10 +23,6 @@ export interface LocalChatMeta {
   id: string;
   title: string;
   updatedAt: number;
-}
-
-function isBrowser(): boolean {
-  return typeof window !== "undefined";
 }
 
 /** The sidebar index, most-recently-updated first. Empty during SSR or if unset. */

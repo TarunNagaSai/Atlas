@@ -1,15 +1,20 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { track } from "@vercel/analytics";
 import {
   BarChart3,
+  Building2,
   FileSearch,
+  Landmark,
   ScrollText,
   ShieldAlert,
   TrendingUp,
+  Users,
 } from "lucide-react";
+import { fetchBooks } from "@/lib/api";
 
-const suggestions = [
+const defaultSuggestions = [
   {
     icon: BarChart3,
     title: "Summarize Q3 earnings",
@@ -32,7 +37,88 @@ const suggestions = [
   },
 ];
 
-export function EmptyState({ onPick }: { onPick: (prompt: string) => void }) {
+// Notebook-specific suggestions for the demo books. Indexes mirror the
+// ordering baked into BookPicker's source labels (0 = Jio DRHP, 1 = JPMorgan).
+const jioSuggestions = [
+  {
+    icon: Users,
+    title: "Management & promoters",
+    prompt:
+      "Who are the key managerial personnel and promoters listed in the DRHP? Are they founders with a long-term stake in the company, and what is their track record?",
+  },
+  {
+    icon: Building2,
+    title: "Business overview",
+    prompt:
+      "What does the company do, and what are its key products, services, and business segments?",
+  },
+  {
+    icon: BarChart3,
+    title: "Revenue & profitability",
+    prompt:
+      "What was the company's total revenue, EBITDA, and net profit for each of the last three fiscal years?",
+  },
+  {
+    icon: TrendingUp,
+    title: "Subscriber metrics",
+    prompt:
+      "What is the subscriber base and ARPU (average revenue per user), and how have they changed over the last three fiscal years?",
+  },
+];
+
+const jpMorganSuggestions = [
+  {
+    icon: Users,
+    title: "Management team",
+    prompt:
+      "Who are the members of the executive management team? How long have they been with the company, and what is their track record?",
+  },
+  {
+    icon: Building2,
+    title: "Business overview",
+    prompt:
+      "What are the company's primary business segments, and what products or services does each one offer?",
+  },
+  {
+    icon: BarChart3,
+    title: "Net revenue & income",
+    prompt:
+      "What was the total net revenue, net income, and diluted EPS reported for the most recent fiscal year?",
+  },
+  {
+    icon: Landmark,
+    title: "Capital ratios",
+    prompt:
+      "What CET1 capital ratio and return on tangible common equity (ROTCE) were reported in the annual report?",
+  },
+];
+
+export function EmptyState({
+  onPick,
+  selectedBook,
+}: {
+  onPick: (prompt: string) => void;
+  selectedBook?: string | null;
+}) {
+  const [suggestions, setSuggestions] = useState(defaultSuggestions);
+
+  useEffect(() => {
+    if (!selectedBook) {
+      setSuggestions(defaultSuggestions);
+      return;
+    }
+    const ctrl = new AbortController();
+    fetchBooks({ signal: ctrl.signal })
+      .then((books) => {
+        const index = books.findIndex((b) => b.book_id === selectedBook);
+        setSuggestions(
+          index === 0 ? jioSuggestions : index === 1 ? jpMorganSuggestions : defaultSuggestions
+        );
+      })
+      .catch(() => setSuggestions(defaultSuggestions));
+    return () => ctrl.abort();
+  }, [selectedBook]);
+
   return (
     <div className="flex flex-1 flex-col items-center justify-center py-16 text-center">
       <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--accent)] text-[var(--accent-fg)] shadow-[var(--shadow-md)]">
