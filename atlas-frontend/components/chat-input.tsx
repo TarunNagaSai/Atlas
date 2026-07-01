@@ -29,6 +29,7 @@ import {
   MAX_ATTACHMENTS,
   validateFile,
 } from "@/lib/attachments";
+import { getDraft, setDraft } from "@/lib/session";
 import { DEFAULT_MODEL, MODELS, type ModelId } from "@/lib/settings";
 import { uid } from "@/lib/utils";
 
@@ -49,6 +50,12 @@ interface ChatInputProps {
   streaming?: boolean;
   disabled?: boolean;
   tokensUsed: number;
+  /**
+   * The active conversation id. Unsent composer text is drafted per chat under
+   * this key, so switching conversations swaps in that chat's own in-progress
+   * text (and a fresh chat starts empty).
+   */
+  draftKey: string | null;
 }
 
 /** Imperative handle so the parent can repopulate the field (e.g. on Stop). */
@@ -64,6 +71,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
       streaming,
       disabled,
       tokensUsed,
+      draftKey,
     },
     ref,
   ) {
@@ -79,6 +87,26 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
   // dragenter/dragleave fire per child element; count depth so the overlay only
   // clears when the cursor actually leaves the composer (not a nested element).
   const dragDepth = useRef(0);
+  // Latest draft key, readable inside handlers without re-subscribing them.
+  const draftKeyRef = useRef(draftKey);
+  draftKeyRef.current = draftKey;
+
+  // Snap the textarea height to its content (capped), used after any
+  // programmatic value change (draft restore, imperative setText).
+  const resize = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
+  }, []);
+
+  // Swap in the active chat's saved draft whenever the conversation changes. The
+  // previous chat's text is already persisted (saved on every keystroke), so
+  // this only needs to load — the field then reflects the chat you switched to.
+  useEffect(() => {
+    setValue(getDraft(draftKey));
+    requestAnimationFrame(resize);
+  }, [draftKey, resize]);
 
   useEffect(() => {
     if (!dropdownOpen) return;
@@ -94,13 +122,9 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
   useImperativeHandle(ref, () => ({
     setText: (text: string) => {
       setValue(text);
-      const el = textareaRef.current;
-      if (!el) return;
-      el.focus();
-      requestAnimationFrame(() => {
-        el.style.height = "auto";
-        el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
-      });
+      setDraft(draftKeyRef.current, text);
+      textareaRef.current?.focus();
+      requestAnimationFrame(resize);
     },
   }));
 
@@ -211,6 +235,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
     if ((!text && files.length === 0) || disabled) return;
     onSend(text, selectedModel, files.map((f) => f.file));
     setValue("");
+    setDraft(draftKeyRef.current, ""); // the turn is sent — clear its draft
     // The bytes have been handed off; drop the staged chips and free previews.
     files.forEach((f) => f.previewUrl && URL.revokeObjectURL(f.previewUrl));
     setFiles([]);
@@ -227,6 +252,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
 
   const autoGrow = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setValue(e.target.value);
+    setDraft(draftKeyRef.current, e.target.value); // persist per-chat draft
     const el = e.target;
     el.style.height = "auto";
     el.style.height = `${Math.min(el.scrollHeight, 200)}px`;

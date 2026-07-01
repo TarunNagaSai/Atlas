@@ -204,17 +204,11 @@ export default function Home() {
       });
   }, []);
 
-  // First turn of a new chat: adopt the server-minted id as the active thread.
-  const handleConversation = useCallback((id: string) => {
-    setActiveId(id);
-  }, []);
-
   const { messages, thinking, handleSend, handleStop, clearMessages, loadMessages } =
     useChatStream({
       record,
       chatInputRef,
       conversationId: activeId,
-      onConversation: handleConversation,
       onTurnComplete: refreshSessions,
       onAuthError: handleAuthError,
     });
@@ -229,14 +223,21 @@ export default function Home() {
     [hasKey, handleSend],
   );
 
-  // Load the history sidebar once the session id is resolved. We deliberately
-  // leave activeId null here: a fresh visit always lands on "New analysis" with
-  // the prior chats listed but none selected. No conversation id is minted (and
-  // so no session is created) until the first turn is actually sent — see
-  // useChatStream, which mints it on send and reports it via onConversation.
+  // Load the history sidebar once the session id is resolved, and mint the id
+  // for the fresh "New analysis" this visit lands on. Session ids are created in
+  // exactly two places — here on app-open, and in handleNewChat — never on send.
+  // A minted id is only a *draft* until its first turn is persisted, so a
+  // brand-new chat isn't listed in the sidebar until the visitor asks something
+  // (saveLocalChat skips empty transcripts); the pinned "New analysis" row
+  // represents it in the meantime.
+  const initedRef = useRef(false);
   useEffect(() => {
     if (!ready) return;
     refreshSessions();
+    if (!initedRef.current) {
+      initedRef.current = true;
+      setActiveId(crypto.randomUUID());
+    }
   }, [ready, refreshSessions]);
 
   // Client-side storage mode: persist the live transcript to localStorage and
@@ -275,12 +276,12 @@ export default function Home() {
   }, []);
 
   const handleNewChat = () => {
-    // Back to a brand-new, unsent chat: select "New analysis" (activeId null)
-    // and clear the thread. No conversation id is minted yet — useChatStream
-    // mints one only when the first turn is sent, so no empty session is created
-    // until the visitor actually asks something.
+    // Start a brand-new, unsent chat: mint its id now (the second and only other
+    // place a session is created) and clear the thread. It stays a draft — not
+    // listed in the sidebar, represented by the pinned "New analysis" row — until
+    // its first turn is persisted.
     selectedIdRef.current = null;
-    setActiveId(null);
+    setActiveId(crypto.randomUUID());
     clearMessages();
   };
 
@@ -378,6 +379,7 @@ export default function Home() {
           streaming={thinking}
           disabled={thinking}
           tokensUsed={usage.total}
+          draftKey={activeId}
         />
       </main>
 

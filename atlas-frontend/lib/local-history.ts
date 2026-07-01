@@ -57,20 +57,39 @@ export function loadLocalChat(id: string): Message[] {
 }
 
 /**
- * Persist a conversation's transcript and refresh its index entry. The title is
- * the first user message (trimmed); turns still streaming (`pending`) are
- * dropped so a reload never restores a half-finished bubble. A conversation with
- * no real content yet is skipped (no empty entries in the sidebar).
+ * Persist a conversation's transcript and refresh its index entry. Turns still
+ * streaming (`pending`) are dropped so a reload never restores a half-finished
+ * bubble. A conversation with no real content yet is skipped (no empty entries
+ * in the sidebar).
+ *
+ * Two rules keep the sidebar stable:
+ *  - The title is taken from the first question once, then frozen — a later turn
+ *    never rewrites it.
+ *  - `updatedAt` (which drives the top-of-list ordering) is only bumped when the
+ *    transcript actually grew. Merely *opening* a conversation re-saves the same
+ *    settled messages, and that must not float it to the top; only asking a new
+ *    question does.
  */
 export function saveLocalChat(id: string, messages: Message[]): void {
   if (!isBrowser() || !id) return;
   const settled = messages.filter((m) => !m.pending);
   if (settled.length === 0) return;
   try {
-    localStorage.setItem(CHAT_PREFIX + id, JSON.stringify(settled));
+    const serialized = JSON.stringify(settled);
+    const prevRaw = localStorage.getItem(CHAT_PREFIX + id);
+    localStorage.setItem(CHAT_PREFIX + id, serialized);
+
+    const index = listLocalChats();
+    const existing = index.find((c) => c.id === id);
+    // Nothing changed (this is an open/replay of an already-stored chat): leave
+    // the index — and thus the title and ordering — exactly as it was.
+    if (existing && prevRaw === serialized) return;
+
     const firstUser = settled.find((m) => m.role === "user")?.content ?? "";
-    const title = firstUser.trim().slice(0, 80) || "Untitled conversation";
-    const others = listLocalChats().filter((c) => c.id !== id);
+    const title =
+      existing?.title ??
+      (firstUser.trim().slice(0, 80) || "Untitled conversation");
+    const others = index.filter((c) => c.id !== id);
     const next = [{ id, title, updatedAt: Date.now() }, ...others];
     localStorage.setItem(INDEX_KEY, JSON.stringify(next));
   } catch {

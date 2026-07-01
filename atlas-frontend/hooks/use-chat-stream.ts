@@ -59,14 +59,12 @@ interface Params {
   record: (conversationId: string, input: number, output: number) => void;
   chatInputRef: React.RefObject<ChatInputHandle | null>;
   /**
-   * The conversation this thread continues, or null for a brand-new chat.
-   * Sent as X-Session-Id on each turn so follow-ups land in the same backend
-   * conversation; when null, the server mints one and reports it via
-   * `onConversation`.
+   * The conversation this turn belongs to. The page owns this id — it mints one
+   * on app-open and on "New analysis" — so a turn never creates a session; it
+   * just sends into the active one (as X-Session-Id). Null only in the brief
+   * window before the page has resolved the id, during which sends are ignored.
    */
   conversationId: string | null;
-  /** Called with the server-minted id on the first turn of a new chat. */
-  onConversation: (id: string) => void;
   /** Called when a turn settles (done/error/cancel) so the sidebar can refresh. */
   onTurnComplete?: () => void;
   /**
@@ -83,7 +81,6 @@ export function useChatStream({
   record,
   chatInputRef,
   conversationId,
-  onConversation,
   onTurnComplete,
   onAuthError,
 }: Params) {
@@ -105,6 +102,9 @@ export function useChatStream({
 
   const handleSend = useCallback(
     (text: string, model?: string, files: File[] = []) => {
+      // The page owns the conversation id (minted on app-open / New analysis).
+      // If it hasn't resolved yet there's nothing to send into — ignore.
+      if (!conversationId) return;
       track("message_sent", { char_count: text.length, attachments: files.length });
 
       // Snapshot the conversation so far (before this turn's bubbles are added)
@@ -126,13 +126,11 @@ export function useChatStream({
         createdAt: Date.now(),
         ...(attachmentMeta.length ? { attachments: attachmentMeta } : {}),
       };
-      // Mint the conversation id here, on the first turn of a brand-new chat, so
-      // the UI (not the server) owns the per-chat id from turn one. Reporting it
-      // immediately via onConversation makes the parent adopt it as the active
-      // thread, which drives the sidebar/top-bar title and client-mode
-      // persistence. Follow-up turns already have an id and reuse it.
-      const sessionId = conversationId ?? crypto.randomUUID();
-      if (!conversationId) onConversation(sessionId);
+      // Reuse the active conversation id (guaranteed non-null by the guard
+      // above). A turn never mints a session — the page does, so the same chat
+      // is reused for every turn and the sidebar entry only materializes once
+      // this turn's content is persisted.
+      const sessionId = conversationId;
 
       const pendingId = uid();
       const pendingMsg: Message = {
@@ -303,7 +301,7 @@ export function useChatStream({
       void run();
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [record, conversationId, onConversation, onTurnComplete, onAuthError, chatInputRef],
+    [record, conversationId, onTurnComplete, onAuthError, chatInputRef],
   );
 
   const handleStop = useCallback(() => {

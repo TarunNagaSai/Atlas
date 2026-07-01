@@ -20,6 +20,7 @@ const SESSION_KEY = "atlas.session.id";
 const USAGE_PREFIX = "atlas.usage.";
 const BOOK_PREFIX = "atlas.book.";
 const NAME_PREFIX = "atlas.name.";
+const DRAFT_PREFIX = "atlas.draft.";
 
 export interface TokenUsage {
   /** Prompt tokens (`prompt_tokens`). */
@@ -92,6 +93,23 @@ export function getUserName(sessionId: string): string | null {
 export function setUserName(sessionId: string, name: string): void {
   if (!isBrowser() || !sessionId) return;
   localStorage.setItem(NAME_PREFIX + sessionId, name);
+}
+
+/**
+ * The composer's unsent text for one conversation, or "" if none. Drafts are
+ * keyed per chat so switching conversations shows that chat's own in-progress
+ * text and a fresh chat starts empty. Returns "" during SSR or for a null id.
+ */
+export function getDraft(conversationId: string | null): string {
+  if (!isBrowser() || !conversationId) return "";
+  return localStorage.getItem(DRAFT_PREFIX + conversationId) ?? "";
+}
+
+/** Persist (or clear, when empty) a conversation's unsent composer text. */
+export function setDraft(conversationId: string | null, text: string): void {
+  if (!isBrowser() || !conversationId) return;
+  if (text) localStorage.setItem(DRAFT_PREFIX + conversationId, text);
+  else localStorage.removeItem(DRAFT_PREFIX + conversationId);
 }
 
 /** Stored token total for one conversation (empty if the id is null/unseen). */

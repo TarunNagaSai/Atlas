@@ -66,18 +66,18 @@ export const AI_TECHNIQUES = [
     title: "Hybrid Search",
     body: "Combines dense vector similarity with BM25 keyword search, then fuses scores — maximising recall for both semantic and exact-match queries.",
   },
-  {
-    title: "Reranking",
-    body: "A cross-encoder reranker re-scores retrieved chunks for query relevance before they reach the LLM, cutting noise from the context window.",
-  },
-  {
-    title: "Grounding",
-    body: "Every generated claim is anchored to a source passage. Responses that lack evidence are withheld rather than fabricated.",
-  },
-  {
-    title: "CRAG",
-    body: "Corrective RAG evaluates retrieval quality mid-loop and triggers corrective re-retrieval when confidence in the evidence is low.",
-  },
+  // {
+  //   title: "Reranking",
+  //   body: "A cross-encoder reranker re-scores retrieved chunks for query relevance before they reach the LLM, cutting noise from the context window.",
+  // },
+  // {
+  //   title: "Grounding",
+  //   body: "Every generated claim is anchored to a source passage. Responses that lack evidence are withheld rather than fabricated.",
+  // },
+  // {
+  //   title: "CRAG",
+  //   body: "Corrective RAG evaluates retrieval quality mid-loop and triggers corrective re-retrieval when confidence in the evidence is low.",
+  // },
   {
     title: "LLM-as-a-Judge",
     body: "A secondary LLM scores each response for faithfulness, relevance, and completeness — making evaluation systematic and reproducible.",

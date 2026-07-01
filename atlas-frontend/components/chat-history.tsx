@@ -92,6 +92,11 @@ export function ChatHistory({
   const [query, setQuery] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
 
+  // The active chat is a fresh "New analysis" until its first turn is persisted
+  // and it shows up in `sessions`. While it's an unlisted draft (or truly null),
+  // the pinned row stands in for it — so it, not any saved entry, is highlighted.
+  const newActive = !sessions.some((s) => s.id === activeId);
+
   // On mobile, picking a conversation or starting a new one dismisses the drawer.
   const handleSelect = (id: string) => {
     onSelect(id);
@@ -171,21 +176,21 @@ export function ChatHistory({
           <div className="space-y-0.5">
             <button
               type="button"
-              onClick={activeId === null ? onClose : handleNewChat}
+              onClick={newActive ? onClose : handleNewChat}
               className={cn(
                 "group flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-ring)]",
-                activeId === null ? "bg-[var(--accent-soft)]" : "hover:bg-[var(--surface-2)]"
+                newActive ? "bg-[var(--accent-soft)]" : "hover:bg-[var(--surface-2)]"
               )}
             >
               <MessageSquare
                 className={cn(
                   "mt-0.5 h-4 w-4 shrink-0",
-                  activeId === null ? "text-[var(--accent)]" : "text-[var(--subtle)]"
+                  newActive ? "text-[var(--accent)]" : "text-[var(--subtle)]"
                 )}
               />
               <span className={cn(
                 "block truncate text-sm",
-                activeId === null ? "font-medium text-[var(--accent-hover)]" : "text-[var(--foreground)]"
+                newActive ? "font-medium text-[var(--accent-hover)]" : "text-[var(--foreground)]"
               )}>
                 New analysis
               </span>
