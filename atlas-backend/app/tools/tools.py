@@ -22,12 +22,10 @@ from pydantic import BaseModel, Field, ValidationError
 
 from app.llm.embedding import get_embedder
 from app.llm.gemini import get_gemini
+from app.rag.rerank import Reranker
 from app.rag.store import HybridStore
 from app.schema.agent import ToolCallEvent
 from app.schema.llm_settings import get_settings
-
-# How many fused passages to hand back to the agent per retrieve call.
-RETRIEVE_TOP_K = 6
 
 _RETRIEVE_QUERY_DESC = "A focused natural-language search query."
 
@@ -58,7 +56,8 @@ RETRIEVE_TOOL = types.Tool(
             name="retrieve",
             description=(
                 "Search the indexed financial documents and return the most "
-                "relevant passages, each prefixed with its source citation."
+                "relevant passages, each numbered and prefixed with its source "
+                "citation for grounding."
             ),
             parameters=types.Schema(
                 type=types.Type.OBJECT,
@@ -124,7 +123,7 @@ def _get_store() -> HybridStore:
 @observe(name="retrieve", as_type="retriever")
 def retrieve(
     query: str,
-    top_k: int = RETRIEVE_TOP_K,
+    top_k: int | None = None,
     api_key: str | None = None,
     book_id: str | None = None,
 ) -> str:
@@ -136,15 +135,27 @@ def retrieve(
     caller's own key) embeds the query on that key; the pgvector search itself
     needs no key. ``book_id`` (the book the user selected) scopes the search to
     that book's embeddings only; ``None`` searches across every book.
+
+    Retrieval is **wide then narrow**: hybrid search returns ``fused_top_k``
+    candidates by proximity, then the reranker rescores them by answer-usefulness
+    and keeps the ``final_top_k`` (``top_k``) most useful — high recall first,
+    sharp precision last.
     """
     query = query.strip()
     if not query:
         return "retrieve requires a non-empty search query."
 
+    s = get_settings()
+    top_k = top_k or s.final_top_k
     with logfire.span("tool.retrieve", query=query, top_k=top_k, book_id=book_id):
         store = _get_store()
+        gemini = get_gemini(api_key)
         query_vec = get_embedder(api_key).embed_query(query)
-        results = store.hybrid_search(query, query_vec, top_k=top_k, book_id=book_id)
+        # Cast a wide net (fused_top_k), then let the reranker restore precision.
+        candidates = store.hybrid_search(
+            query, query_vec, top_k=s.fused_top_k, book_id=book_id
+        )
+        results = Reranker(s, gemini=gemini).rerank(query, candidates, top_k=top_k)
         logfire.info("retrieve found {n} passage(s)", n=len(results))
 
     if not results:
@@ -164,7 +175,11 @@ def retrieve(
         passage = (scored.chunk.parent_text or scored.chunk.text).strip()
         if not passage:
             continue
-        blocks.append(f"[Source: {scored.citation}]\n{passage}")
+        # Number each source so the agent can cite it with a compact [n] marker
+        # after each claim (grounding). The source path stays on the same line, so
+        # the [n] -> document mapping is auditable straight from the trace.
+        n = len(blocks) + 1
+        blocks.append(f"[{n}] Source: {scored.citation}\n{passage}")
 
     if not blocks:
         return "Matching passages had no extractable text to quote."

@@ -24,6 +24,7 @@ from app.tools.tools import GRAPH_SEARCH_TOOL, RETRIEVE_TOOL, execute_tool_call
 _PROMPTS_DIR = Path(__file__).resolve().parents[1] / "prompts"
 _PROMPT_PATH = _PROMPTS_DIR / "react_prompt.txt"
 _PLAN_PROMPT_PATH = _PROMPTS_DIR / "plan_prompt.txt"
+_FORCE_PROMPT_PATH = _PROMPTS_DIR / "force_answer_prompt.txt"
 _FALLBACK_PROMPT = (
     "You are a helpful assistant. Use the `retrieve` function to search the "
     "indexed documents before answering. When you have enough context, write the "
@@ -34,10 +35,13 @@ _FALLBACK_PLAN_PROMPT = (
     "asked, what you need to find, and how you will approach it. Do not answer "
     "or call any tool yet — just lay out the plan in 3-5 sentences."
 )
-# Max agent turns (each turn is one Gemini call: a tool call or the final answer).
-_MAX_HOPS = 6
-
-
+_FALLBACK_FORCE_PROMPT = (
+    "You have no tools available now and cannot search again. Write your final "
+    "answer using only the information already retrieved earlier in this "
+    "conversation. Quote figures exactly and cite their sources; state plainly "
+    "what you could not find, and never invent a figure that isn't in the "
+    "retrieved passages."
+)
 def _load_prompt() -> str:
     if _PROMPT_PATH.exists():
         return _PROMPT_PATH.read_text()
@@ -48,6 +52,12 @@ def _load_plan_prompt() -> str:
     if _PLAN_PROMPT_PATH.exists():
         return _PLAN_PROMPT_PATH.read_text()
     return _FALLBACK_PLAN_PROMPT
+
+
+def _load_force_prompt() -> str:
+    if _FORCE_PROMPT_PATH.exists():
+        return _FORCE_PROMPT_PATH.read_text()
+    return _FALLBACK_FORCE_PROMPT
 
 
 def _accumulate(total: UsageEvent, turn: UsageEvent) -> None:
@@ -123,6 +133,8 @@ async def run_agent(
     registry = get_cancellation_registry()
     system = _load_prompt()
     plan_system = _load_plan_prompt()
+    force_system = _load_force_prompt()
+    max_hops = gemini.s.agent_max_hops
     # Prior conversation first (so the agent has multi-turn memory), then this
     # turn. Gemini speaks ``user``/``model``; map the stored ``assistant`` role.
     contents: list[types.Content] = [
@@ -151,7 +163,7 @@ async def run_agent(
     # ``agent-stream`` generation; each turn opens its own Langfuse generation so
     # the trace breaks token usage down per Gemini call (and tool spans, which
     # ``@observe`` themselves, nest under the turn that requested them).
-    with logfire.span("agent.run", message=message, max_hops=_MAX_HOPS) as span, \
+    with logfire.span("agent.run", message=message) as span, \
             langfuse.start_as_current_observation(
                 name="agent.run", as_type="span", input=message
             ) as run_obs:
@@ -203,7 +215,16 @@ async def run_agent(
                     types.Content(role="model", parts=[types.Part(text=plan_text)])
                 )
 
-        for hop in range(1, _MAX_HOPS + 1):
+        # Reason->act loop that runs until the model stops calling tools and
+        # streams a final answer. ``max_hops`` is a high safety backstop, not a
+        # functional limit: on the final allowed turn the agent drops its tools
+        # and swaps in ``force_system``, so instead of failing with "max hops
+        # exhausted" it is compelled to answer from whatever it has already
+        # gathered. The other exit is cancellation (stop / disconnect, caught at
+        # the gates below).
+        hop = 0
+        while True:
+            hop += 1
             # Outer gate: catches a stop that arrived while the previous turn's
             # tool call was running (the inner gate wasn't executing to see it).
             if _stop_requested():
@@ -211,7 +232,18 @@ async def run_agent(
                 run_obs.update(output="(cancelled)")
                 raise GenerationCancelled
 
-            with logfire.span("agent.step", step=hop), \
+            # Final allowed turn: withhold the tools and force an answer from the
+            # context gathered so far, rather than letting the loop run forever.
+            forced = hop >= max_hops
+            if forced:
+                logfire.warn(
+                    "agent hit max hops ({max_hops}); forcing an answer from "
+                    "gathered context", max_hops=max_hops
+                )
+            turn_tools = [] if forced else [RETRIEVE_TOOL, GRAPH_SEARCH_TOOL]
+            turn_system = force_system if forced else system
+
+            with logfire.span("agent.step", step=hop, forced=forced), \
                     langfuse.start_as_current_observation(
                         name=f"agent.turn-{hop}", as_type="generation", model=turn_model
                     ) as turn_obs:
@@ -223,8 +255,8 @@ async def run_agent(
                 async with aclosing(
                     gemini.stream_agent_turn_async(
                         contents,
-                        [RETRIEVE_TOOL, GRAPH_SEARCH_TOOL],
-                        system=system,
+                        turn_tools,
+                        system=turn_system,
                         settings=turn_settings,
                     )
                 ) as events:
@@ -268,7 +300,9 @@ async def run_agent(
                     turn_obs.update(output=answer)
                     run_obs.update(output=answer)
                     span.set_attribute("steps_used", hop)
-                    span.set_attribute("outcome", "final_answer")
+                    span.set_attribute(
+                        "outcome", "forced_answer" if forced else "final_answer"
+                    )
                     yield totals
                     return
 
@@ -286,14 +320,3 @@ async def run_agent(
                 )
                 yield ToolResultEvent(name=tool_call.name, result=result)
                 contents.extend(turns)
-
-        span.set_attribute("outcome", "max_hops_exhausted")
-        run_obs.update(output="(max hops exhausted)")
-        logfire.warn("agent hit max hops ({max_hops}) without answering", max_hops=_MAX_HOPS)
-        yield TextEvent(
-            text=(
-                "I couldn't find enough information to answer that after several "
-                "searches of the indexed documents."
-            )
-        )
-        yield totals

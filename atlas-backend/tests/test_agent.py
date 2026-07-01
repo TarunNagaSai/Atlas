@@ -5,7 +5,7 @@ The agent is exercised end-to-end with a *scripted* Gemini stand-in and a stub
 
   - the streamed final answer (no tool call),
   - one or more tool hops with history feedback,
-  - max-hop exhaustion,
+  - the forced-answer safety valve on the final allowed hop,
   - the empty/degenerate turn,
   - prompt loading and per-turn invocation contracts.
 
@@ -21,7 +21,7 @@ import pytest
 from google.genai import types
 
 import app.agent.agent as agent
-from app.agent.agent import _FALLBACK_PROMPT, _MAX_HOPS, _load_prompt, run_agent
+from app.agent.agent import _FALLBACK_PROMPT, _load_prompt, run_agent
 from app.tools.tools import RETRIEVE_TOOL
 
 
@@ -250,30 +250,14 @@ async def test_system_prompt_forwarded_on_every_turn(patch_agent):
 
 
 # --------------------------------------------------------------------------- #
-# Max-hop exhaustion
+# Forced-answer safety valve (final allowed hop)
 # --------------------------------------------------------------------------- #
-async def test_max_hops_exhausted_yields_fallback(patch_agent):
-    # Every turn asks for the tool again => the loop never reaches a text turn.
-    patch_agent.script([[tool_event()] for _ in range(_MAX_HOPS)])
-
-    out = await collect(run_agent("q"))
-
-    assert len(out) == 1
-    assert "couldn't find enough information" in out[0]
-    assert len(patch_agent.tool_calls) == _MAX_HOPS
-    assert len(patch_agent.gemini.calls) == _MAX_HOPS
-
-
-async def test_answer_on_final_allowed_hop(patch_agent):
-    """A text turn on the very last allowed hop is a normal answer, no fallback."""
-    turns = [[tool_event()] for _ in range(_MAX_HOPS - 1)]
-    turns.append([text_event("just in time")])
-    patch_agent.script(turns)
-
-    out = await collect(run_agent("q"))
-
-    assert out == ["just in time"]
-    assert len(patch_agent.gemini.calls) == _MAX_HOPS
+# The loop no longer has a functional turn cap and never emits a "couldn't find
+# enough information" fallback: it runs until the model stops calling tools. The
+# only backstop is ``Settings.agent_max_hops`` — on that final hop the agent
+# withholds its tools and swaps in ``force_answer_prompt``, compelling the model
+# to answer from the context it has already gathered (outcome "forced_answer").
+# See ``run_agent`` in app/agent/agent.py.
 
 
 # --------------------------------------------------------------------------- #

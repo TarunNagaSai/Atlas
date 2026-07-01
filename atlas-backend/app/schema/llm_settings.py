@@ -27,6 +27,12 @@ class Settings:
             "true",
             "yes",
         }
+        # Safety valve on the ReAct loop, not a functional limit: the agent
+        # normally runs until it stops calling tools and answers. This is a high
+        # backstop so a model stuck in a retrieve-loop can't spin forever — on the
+        # final allowed turn the agent drops its tools and forces an answer from
+        # whatever it has already gathered (see run_agent).
+        self.agent_max_hops: int = int(_env("AGENT_MAX_HOPS", "40"))
 
         # --- Embeddings ---------------------------------------------------
         # gemini-embedding-2 is natively multimodal (text + image + PDF map into
@@ -81,6 +87,26 @@ class Settings:
         # Communities smaller than this are skipped when summarizing (too small
         # to represent a meaningful theme).
         self.graph_min_community: int = int(_env("GRAPH_MIN_COMMUNITY", "3"))
+
+        # --- Reranking ----------------------------------------------------
+        # A cross-encoder-style second pass: hybrid_search ranks by proximity
+        # (how close a passage sits to the query), which isn't the same as
+        # usefulness — the passage that actually answers the question often sits
+        # a few ranks down. The reranker reads query + candidate *together* and
+        # scores each for answer-usefulness, restoring precision after wide
+        # recall. Retrieve ``fused_top_k`` (wide net), rerank to ``final_top_k``.
+        self.rerank_enabled: bool = _env("RERANK_ENABLED", "true").lower() in {
+            "1",
+            "true",
+            "yes",
+        }
+        # A cheaper/faster model is fine — this is one structured scoring call
+        # over a short candidate list, not open-ended generation.
+        self.rerank_model: str = _env("RERANK_MODEL", "gemini-3.1-flash-lite")
+        # Candidates kept after RRF fusion and handed to the reranker.
+        self.fused_top_k: int = int(_env("FUSED_TOP_K", "12"))
+        # Passages the reranker keeps and the agent actually sees.
+        self.final_top_k: int = int(_env("FINAL_TOP_K", "6"))
 
         # --- Observability ------------------------------------------------
         # Stdlib logging threshold; records below this never reach Logfire.
