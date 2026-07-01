@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api import router
 from app.observability.langfuse import langfuse_lifespan
 from app.observability.logfire import configure_logfire
+from app.schema.llm_settings import get_settings
 
 configure_logfire()
 
@@ -27,7 +28,12 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "https://atlas.avipra.com",
+        *get_settings().allowed_origins,
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
 )

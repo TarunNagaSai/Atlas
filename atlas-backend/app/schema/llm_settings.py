@@ -112,6 +112,16 @@ class Settings:
         # Stdlib logging threshold; records below this never reach Logfire.
         self.log_level: str = _env("LOG_LEVEL", "INFO").upper()
 
+        # --- CORS -----------------------------------------------------
+        # Comma-separated list of extra allowed origins (e.g. the deployed
+        # frontend's URL), added on top of the localhost defaults main.py
+        # always allows for local dev.
+        self.allowed_origins: list[str] = [
+            origin.strip()
+            for origin in _env("ALLOWED_ORIGINS", "").split(",")
+            if origin.strip()
+        ]
+
     def require_key(self) -> str:
         if not self.api_key:
             raise ValueError(

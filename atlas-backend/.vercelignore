@@ -1,0 +1,13 @@
+.venv
+tests
+eval
+data
+scripts
+migrations
+__pycache__
+.pytest_cache
+.ruff_cache
+.mcp.json
+.claude
+CLAUDE.md
+uv.lock

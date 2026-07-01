@@ -103,6 +103,30 @@ See [`CLAUDE.md`](./CLAUDE.md) for the deeper architecture notes and current got
 uvx ruff check app      # ruff is not a declared dep — run via uvx
 ```
 
+## Deploying to Vercel
+
+The app is exposed to Vercel's Python runtime via `api/index.py` (imports the `app` from
+`main.py`), routed by `vercel.json` (catch-all rewrite to that function, `maxDuration: 300`).
+
+1. `requirements.txt` is generated from `uv.lock` — regenerate it after changing dependencies:
+   ```bash
+   uv export --no-hashes --no-dev -o requirements.txt
+   ```
+2. Set these as environment variables in the Vercel project (not via `.env` — that file is
+   gitignored and never deployed): `GOOGLE_API_KEY` (or `GEMINI_API_KEY`), `DATABASE_URL`,
+   `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, `LANGFUSE_HOST`, and any other overrides from
+   the table above. `ALLOWED_ORIGINS` (comma-separated) can add extra CORS origins beyond the
+   defaults hardcoded in `main.py` (localhost + `atlas.avipra.com`).
+3. `DATABASE_URL` must point at a reachable Postgres (the project already uses Supabase pgvector,
+   which works fine from Vercel's serverless functions).
+4. Deploy — Vercel auto-detects the Python function from `api/index.py` and `requirements.txt`.
+
+**Known constraints of this setup:** the ReAct agent streams SSE over several Gemini hops per
+request, which doesn't map cleanly onto serverless functions — `maxDuration` is set to Vercel's
+current 300s ceiling to give long agent runs room, but very deep tool-call loops can still be cut
+off. There's also no persistent connection pooling across invocations (each cold start opens its
+own DB connection).
+
 ## Status / gotchas
 
 - The agent has **no tools wired yet** — `app/tools/tools.py` is empty, so the agent
