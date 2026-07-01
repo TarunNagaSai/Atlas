@@ -10,7 +10,7 @@ router = APIRouter()
 
 @router.get("/")
 async def root() -> JSONResponse:
-    return JSONResponse({"message": "Atlas RAG API"})
+    return JSONResponse({"message": "Atlas is Runnings"})
 
 
 @router.get("/health")

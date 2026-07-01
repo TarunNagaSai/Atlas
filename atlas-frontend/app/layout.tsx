@@ -22,20 +22,20 @@ const siteUrl =
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: "Atlas — Financial Research Copilot",
+  title: "Atlas — Financial Research Agent",
   description:
-    "Grounded answers over your filings, contracts, and reports with an advanced RAG pipeline.",
+    "Stop digging through hundreds of pages—ask Atlas instead.",
   openGraph: {
-    title: "Atlas — Financial Research Copilot",
+    title: "Atlas — Financial Research Agent",
     description:
-      "Agentic RAG over your filings, contracts, and reports — with GraphRAG, hybrid search, and grounded citations.",
+      "Grounded answers from filings, contracts, and reports—with exact citations.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Atlas — Financial Research Copilot",
+    title: "Atlas — Financial Research Agent",
     description:
-      "Agentic RAG over your filings, contracts, and reports — with GraphRAG, hybrid search, and grounded citations.",
+      "Grounded answers from filings, contracts, and reports—with exact citations.",
   },
 };
 

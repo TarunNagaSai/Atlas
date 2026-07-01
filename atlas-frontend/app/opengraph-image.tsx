@@ -170,11 +170,11 @@ export default function OGImage() {
           {/* Bottom: Feature pills */}
           <div style={{ display: "flex", gap: 12 }}>
             {[
-              "Agentic RAG",
-              "GraphRAG",
-              "Hybrid Search",
-              "LLM-as-a-Judge",
-              "SSE Streaming",
+              "Argentic AI",
+              "Gemini",
+              "Fast API",
+              "Nest.js",
+              "LangFuse",
             ].map((label) => (
               <div
                 key={label}
