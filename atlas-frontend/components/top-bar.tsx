@@ -35,11 +35,11 @@ export function TopBar({
         </h1>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 items-center gap-2">
         <button
           type="button"
           onClick={() => { track("hire_me_clicked"); window.location.href = "mailto:tarunnagasai@icloud.com"; }}
-          className="flex h-8 items-center justify-center rounded-lg bg-[var(--accent)] px-3 text-xs font-semibold text-[var(--accent-fg)] shadow-sm transition-colors hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-ring)]"
+          className="flex h-8 shrink-0 items-center justify-center whitespace-nowrap rounded-lg bg-[var(--accent)] px-3 text-xs font-semibold text-[var(--accent-fg)] shadow-sm transition-colors hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-ring)]"
         >
           Hire Me
         </button>
@@ -49,7 +49,7 @@ export function TopBar({
           aria-label="Toggle knowledge base"
           aria-pressed={panelOpen}
           className={cn(
-            "flex h-8 w-8 items-center justify-center rounded-lg border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-ring)]",
+            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-ring)]",
             panelOpen
               ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
               : "border-[var(--border)] text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
