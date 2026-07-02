@@ -142,6 +142,11 @@ export function getMarkdown(): MarkdownIt {
   md.renderer.rules.source_ref = (tokens, idx) =>
     `<sup class="cite-ref">${tokens[idx].content}</sup>`;
 
+  // Wrap tables in a horizontally-scrollable container so wide financial tables
+  // scroll on narrow screens instead of collapsing to char-by-char wrapping.
+  md.renderer.rules.table_open = () => '<div class="table-wrap"><table>';
+  md.renderer.rules.table_close = () => "</table></div>";
+
   cached = md;
   return md;
 }

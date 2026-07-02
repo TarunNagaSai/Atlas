@@ -91,19 +91,18 @@ export function MessageBubble({ message }: { message: Message }) {
   const hasThinking = thinking.length > 0;
 
   return (
-    <div className="flex animate-rise gap-3">
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent)] ring-1 ring-[var(--border)]">
-        <TrendingUp className="h-4 w-4" strokeWidth={2.4} />
+    <div className="group flex animate-rise flex-col">
+      <div className="mb-2 flex items-center gap-2">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent)] ring-1 ring-[var(--border)]">
+          <TrendingUp className="h-4 w-4" strokeWidth={2.4} />
+        </div>
+        <span className="text-sm font-semibold tracking-tight">Atlas</span>
+        <span className="rounded bg-[var(--surface-2)] px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[var(--subtle)]">
+          Grounded
+        </span>
       </div>
 
-      <div className="group min-w-0 flex-1">
-        <div className="mb-1 flex items-center gap-2">
-          <span className="text-sm font-semibold tracking-tight">Atlas</span>
-          <span className="rounded bg-[var(--surface-2)] px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[var(--subtle)]">
-            Grounded
-          </span>
-        </div>
-
+      <div className="min-w-0">
         {hasThinking && (
           <ThinkingSteps steps={thinking} busy={Boolean(message.pending)} />
         )}
