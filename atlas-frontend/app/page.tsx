@@ -382,6 +382,7 @@ export default function Home() {
 
   const handleSelectSession = (id: string) => {
     if (id === activeId) return;
+    track("existing_chat_opened");
     selectedIdRef.current = id;
     setActiveId(id);
     // Client mode replays from localStorage (synchronous, no backend call);
