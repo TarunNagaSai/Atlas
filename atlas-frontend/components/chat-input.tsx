@@ -302,13 +302,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
             <p className="px-1.5 text-xs text-[var(--danger,#e5484d)]">{attachError}</p>
           )}
 
-          {/* Composer is locked until a Gemini API key is provided */}
-          {locked && (
-            <p className="px-1.5 text-xs text-[var(--subtle)]">
-              Add a Gemini API key to start chatting.
-            </p>
-          )}
-
           {/* Hidden native picker, driven by the paperclip */}
           <input
             ref={fileInputRef}

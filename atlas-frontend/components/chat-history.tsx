@@ -44,6 +44,7 @@ interface ChatHistoryProps {
   onClose: () => void;
   hasKey: boolean;
   onSaveKey: (key: string) => void;
+  onDeleteKey: () => void;
   selectedBook: string | null;
   onSwitchBook: (bookId: string) => void;
 }
@@ -84,6 +85,7 @@ export function ChatHistory({
   onClose,
   hasKey,
   onSaveKey,
+  onDeleteKey,
   selectedBook,
   onSwitchBook,
 }: ChatHistoryProps) {
@@ -312,6 +314,7 @@ export function ChatHistory({
       onToggleTheme={toggle}
       hasKey={hasKey}
       onSaveKey={onSaveKey}
+      onDeleteKey={onDeleteKey}
       selectedBook={selectedBook}
       onSwitchBook={onSwitchBook}
     />

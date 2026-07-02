@@ -172,6 +172,12 @@ export default function Home() {
     [saveKey],
   );
 
+  const handleDeleteKey = useCallback(() => {
+    track("api_key_deleted");
+    clearKey(); // hasKey → false → setupStep becomes "key" automatically
+    setKeySkipped(false); // force re-prompt rather than silently staying keyless
+  }, [clearKey]);
+
   const handleSwitchBook = useCallback(
     (bookId: string) => {
       selectBook(bookId, userName ?? "");
@@ -438,6 +444,7 @@ export default function Home() {
         onClose={() => setNavOpen(false)}
         hasKey={hasKey}
         onSaveKey={handleSaveKey}
+        onDeleteKey={handleDeleteKey}
         selectedBook={selectedBook}
         onSwitchBook={handleSwitchBook}
       />

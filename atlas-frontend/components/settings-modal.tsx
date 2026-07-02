@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, BookOpen, Check, Eye, EyeOff, KeyRound, Loader2, Moon, RotateCw, Settings, Sun, X } from "lucide-react";
+import { AlertTriangle, BookOpen, Check, Eye, EyeOff, KeyRound, Loader2, Moon, RotateCw, Settings, Sun, Trash2, X } from "lucide-react";
 import { useBooks } from "@/lib/books";
 import { validateGeminiKey } from "@/lib/validate-gemini-key";
 
@@ -12,6 +12,7 @@ interface SettingsModalProps {
   onToggleTheme: () => void;
   hasKey: boolean;
   onSaveKey: (key: string) => void;
+  onDeleteKey: () => void;
   selectedBook: string | null;
   onSwitchBook: (bookId: string) => void;
 }
@@ -23,6 +24,7 @@ export function SettingsModal({
   onToggleTheme,
   hasKey,
   onSaveKey,
+  onDeleteKey,
   selectedBook,
   onSwitchBook,
 }: SettingsModalProps) {
@@ -67,6 +69,11 @@ export function SettingsModal({
       return;
     }
     onSaveKey(trimmed);
+    onClose();
+  };
+
+  const handleDeleteKey = () => {
+    onDeleteKey();
     onClose();
   };
 
@@ -215,10 +222,21 @@ export function SettingsModal({
                 Gemini API Key
               </p>
               {hasKey && (
-                <span className="flex items-center gap-1 text-[11px] text-[var(--positive,#22c55e)]">
-                  <Check className="h-3 w-3" />
-                  Key saved
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="flex items-center gap-1 text-[11px] text-[var(--positive,#22c55e)]">
+                    <Check className="h-3 w-3" />
+                    Key saved
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleDeleteKey}
+                    aria-label="Delete saved key"
+                    title="Delete saved key"
+                    className="rounded-md p-1 text-[var(--muted)] transition-colors hover:text-[var(--negative,#ef4444)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-ring)]"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                </div>
               )}
             </div>
 

@@ -17,18 +17,27 @@
 
 import type { Message } from "@/types";
 import { getChatStorageMode } from "@/lib/models/chat";
+import { getSelectedBook, getSessionId } from "@/lib/session";
 import { isSeeded, loadLocalChat, markSeeded, saveLocalChat } from "@/lib/local-history";
 import compareCompanies from "./compare-companies.json";
 
 interface StaticSeed {
   /** Stable conversation id — reused as the localStorage key + seeded marker. */
   id: string;
+  /**
+   * The notebook this seed belongs to. `saveLocalChat` tags a *new* chat with
+   * whatever book is currently active, so without this guard the seed would
+   * attach itself to whichever book happens to be selected the first time
+   * hydration runs, instead of staying pinned to the book it's about.
+   */
+  bookId: string;
   messages: Message[];
 }
 
 const STATIC_SEEDS: StaticSeed[] = [
   {
-    id: "0db271ab-a7a2-4057-8440-c1d7f9bc7cfe",
+    id: "8f2c4e1a-6b3d-4a9f-9e5c-7d1a2b3c4d5e",
+    bookId: "92cca65f9a719c17", // JPMorgan Chase
     messages: compareCompanies as Message[],
   },
 ];
@@ -37,12 +46,16 @@ const STATIC_SEEDS: StaticSeed[] = [
  * One-time hydrate of the bundled seeds into localStorage. Client mode only (in
  * DB mode the backend owns history). Idempotent via the seeded-id marker: a seed
  * the visitor later deletes locally isn't re-added, and a seed they've already
- * continued (now larger locally) isn't clobbered. Returns true if it wrote any.
+ * continued (now larger locally) isn't clobbered. Each seed only hydrates while
+ * its own book is the active one, so it never gets tagged onto an unrelated
+ * notebook. Returns true if it wrote any.
  */
 export function hydrateStaticSeeds(): boolean {
   if (getChatStorageMode() !== "client") return false;
+  const activeBook = getSelectedBook(getSessionId());
   let wrote = false;
   for (const seed of STATIC_SEEDS) {
+    if (seed.bookId !== activeBook) continue;
     if (isSeeded(seed.id) || loadLocalChat(seed.id).length > 0) continue;
     saveLocalChat(seed.id, seed.messages);
     markSeeded(seed.id);
