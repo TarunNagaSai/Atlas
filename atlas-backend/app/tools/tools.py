@@ -164,6 +164,7 @@ def retrieve(
             "query."
         )
 
+    cap = s.passage_max_chars
     blocks: list[str] = []
     seen: set[str] = set()
     for scored in results:
@@ -172,7 +173,19 @@ def retrieve(
         if scored.chunk.parent_id in seen:
             continue
         seen.add(scored.chunk.parent_id)
-        passage = (scored.chunk.parent_text or scored.chunk.text).strip()
+        parent = (scored.chunk.parent_text or "").strip()
+        child = scored.chunk.text.strip()
+        # Bound the passage: the whole page is great for grounding but gets
+        # re-sent on every later hop. Keep the full page only while it fits the
+        # cap; past it, fall back to the matched child span (the actually-relevant
+        # text) rather than the page's arbitrary head, then hard-truncate as a
+        # last-resort guard.
+        if parent and (not cap or len(parent) <= cap):
+            passage = parent
+        else:
+            passage = child or parent
+            if cap and len(passage) > cap:
+                passage = passage[:cap].rstrip()
         if not passage:
             continue
         # Number each source so the agent can cite it with a compact [n] marker

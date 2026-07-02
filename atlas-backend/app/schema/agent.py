@@ -88,6 +88,12 @@ class UsageEvent(BaseModel):
     thoughts_tokens: int = 0
     output_tokens: int = 0
     total_tokens: int = 0
+    # Of ``prompt_tokens``, how many were served from Gemini's implicit context
+    # cache (billed at a discount, not free). Non-zero means the stable request
+    # prefix — the system prompt and the unchanged head of ``contents`` — is being
+    # reused across hops instead of re-billed at full price. Zero means the cache
+    # didn't hit: prefix changed, or it's below the model's minimum-cacheable size.
+    cached_tokens: int = 0
 
 
 # Discriminated union: validates any variant by its ``type`` tag.

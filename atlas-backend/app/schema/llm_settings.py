@@ -32,7 +32,29 @@ class Settings:
         # backstop so a model stuck in a retrieve-loop can't spin forever — on the
         # final allowed turn the agent drops its tools and forces an answer from
         # whatever it has already gathered (see run_agent).
-        self.agent_max_hops: int = int(_env("AGENT_MAX_HOPS", "40"))
+        self.agent_max_hops: int = int(_env("AGENT_MAX_HOPS", "12"))
+
+        # --- Planning turn ------------------------------------------------
+        # The tool-less planning turn runs before the ReAct loop. Its plan is
+        # appended to ``contents`` and re-sent on every subsequent hop, so it is
+        # pure overhead on top of the loop. Two knobs keep it cheap:
+        #   • run it on a lighter model (a 3-5 sentence plan doesn't need the full
+        #     generation model) — a straight cost cut with no change to the loop;
+        #   • skip it entirely for trivial short messages (greetings, one-line
+        #     lookups the ReAct prompt already handles). ``plan_min_chars`` is the
+        #     length below which planning is skipped when there are no attachments;
+        #     0 disables the skip (plan always runs, just on the cheaper model).
+        self.plan_model: str = _env("PLAN_MODEL", "gemini-3.1-flash-lite")
+        self.plan_min_chars: int = int(_env("PLAN_MIN_CHARS", "0"))
+
+        # Context-window control on the ReAct loop: each retrieved passage set is
+        # re-sent on every later hop, so a multi-search run pays for early results
+        # again and again. Once a result is superseded, compact all but the most
+        # recent ``keep_recent_tool_results`` down to a short stub. Kept
+        # conservative (>=1) so the model never loses the context it is actively
+        # reasoning over — evicting too aggressively makes it re-search and can
+        # push it into the force-answer path with incomplete evidence.
+        self.keep_recent_tool_results: int = int(_env("KEEP_RECENT_TOOL_RESULTS", "2"))
 
         # --- Embeddings ---------------------------------------------------
         # gemini-embedding-2 is natively multimodal (text + image + PDF map into
@@ -104,9 +126,16 @@ class Settings:
         # over a short candidate list, not open-ended generation.
         self.rerank_model: str = _env("RERANK_MODEL", "gemini-3.1-flash-lite")
         # Candidates kept after RRF fusion and handed to the reranker.
-        self.fused_top_k: int = int(_env("FUSED_TOP_K", "12"))
+        self.fused_top_k: int = int(_env("FUSED_TOP_K", "8"))
         # Passages the reranker keeps and the agent actually sees.
-        self.final_top_k: int = int(_env("FINAL_TOP_K", "6"))
+        self.final_top_k: int = int(_env("FINAL_TOP_K", "4"))
+        # Per-passage character cap handed to the agent. Parent-document retrieval
+        # returns whole pages (``parent_chunk_tokens`` ~1200 tokens ≈ 4800 chars);
+        # that full page is re-sent on every subsequent ReAct hop, so an uncapped
+        # passage dominates the token bill. Above this cap we drop back to the
+        # matched child span (the actually-relevant text), then hard-truncate as a
+        # final guard. 0 = uncapped (old behaviour).
+        self.passage_max_chars: int = int(_env("PASSAGE_MAX_CHARS", "1400"))
 
         # --- Observability ------------------------------------------------
         # Stdlib logging threshold; records below this never reach Logfire.

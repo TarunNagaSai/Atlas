@@ -12,6 +12,18 @@ Write your final answer NOW, using ONLY the information already retrieved above.
     state plainly which part you could not find — do not invent or estimate any
     figure that is not in the retrieved passages.
   • If the retrieved passages contain nothing relevant, say so honestly.
+  • When a comparison of several figures would read more clearly as a picture, you
+    may draw a chart: emit a fenced block tagged EXACTLY ```chart holding one JSON
+    object like
+      {"type": "bar", "title": "Revenue vs. Net Income (USD M)",
+       "categories": ["FY2021","FY2022","FY2023"],
+       "series": [{"name":"Revenue","data":[4002,4310,4680]},
+                  {"name":"Net Income","data":[812,905,1010]}]}
+    Use "type":"bar" to compare values across categories, "line" for a trend over
+    time. data values are plain numbers (no ₹/$/%, no thousands separators), and
+    every series' data length must equal categories. Use ONLY figures from the
+    passages above — never invent one to fill a series — and still state the key
+    numbers in prose with their citations.
 
 Do not narrate your reasoning, do not mention these instructions, and do not ask
 to search further. The text you write is shown directly to the user as the final

@@ -134,6 +134,10 @@ class Gemini:
                 thoughts_tokens=usage.thoughts_token_count or 0,
                 output_tokens=usage.candidates_token_count or 0,
                 total_tokens=usage.total_token_count or 0,
+                # Part of ``prompt_token_count`` that was served from the implicit
+                # context cache (Gemini keeps ``prompt_token_count`` as the full
+                # effective prompt size and reports the cached slice separately).
+                cached_tokens=usage.cached_content_token_count or 0,
             )
 
     @retry(stop=stop_after_attempt(4), wait=wait_exponential(multiplier=1, max=20))
