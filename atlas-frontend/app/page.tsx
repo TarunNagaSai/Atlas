@@ -344,10 +344,17 @@ export default function Home() {
   }, [messages, activeId, refreshSessions]);
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({
-      top: scrollRef.current.scrollHeight,
-      behavior: "smooth",
-    });
+    // Desktop scrolls the inner container; mobile scrolls the document itself
+    // (so the browser chrome can collapse). Pick whichever is the live scroller.
+    const el = scrollRef.current;
+    if (el && el.scrollHeight > el.clientHeight + 1) {
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    } else {
+      window.scrollTo({
+        top: document.documentElement.scrollHeight,
+        behavior: "smooth",
+      });
+    }
   }, [messages]);
 
   // The knowledge panel is inline on desktop (open by default) but an overlay
@@ -443,7 +450,7 @@ export default function Home() {
   }
 
   return (
-    <div className="flex h-[100dvh] w-full overflow-hidden bg-[var(--background)]">
+    <div className="flex min-h-[100dvh] w-full bg-[var(--background)] lg:h-[100dvh] lg:overflow-hidden">
       <BookPicker
         step={setupStep}
         keyInvalid={keyInvalid}
@@ -476,7 +483,7 @@ export default function Home() {
           onOpenNav={() => setNavOpen(true)}
         />
 
-        <div ref={scrollRef} className="flex-1 overflow-y-auto">
+        <div ref={scrollRef} className="flex-1 lg:overflow-y-auto">
           <div className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-6 sm:py-8">
             {chatLoading ? (
               <ChatSkeleton />
@@ -488,16 +495,21 @@ export default function Home() {
           </div>
         </div>
 
-        <ChatInput
-          ref={chatInputRef}
-          onSend={handleSendGated}
-          onStop={handleStop}
-          streaming={thinking}
-          disabled={thinking}
-          hasApiKey={hasKey}
-          tokensUsed={usage.total}
-          draftKey={activeId}
-        />
+        {/* Sticky on mobile so it rides the viewport bottom while the document
+            scrolls (letting the browser's bottom toolbar collapse); static
+            inside the fixed app-shell column on desktop. */}
+        <div className="sticky bottom-0 z-20 lg:static">
+          <ChatInput
+            ref={chatInputRef}
+            onSend={handleSendGated}
+            onStop={handleStop}
+            streaming={thinking}
+            disabled={thinking}
+            hasApiKey={hasKey}
+            tokensUsed={usage.total}
+            draftKey={activeId}
+          />
+        </div>
       </main>
 
       <RagPanel

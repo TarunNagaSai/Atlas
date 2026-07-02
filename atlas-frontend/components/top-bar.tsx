@@ -20,7 +20,7 @@ export function TopBar({
   onOpenNav,
 }: TopBarProps) {
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-[var(--border)] bg-[var(--surface)] px-3 pt-[env(safe-area-inset-top)] sm:px-4">
+    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-[var(--border)] bg-[var(--surface)] px-3 pt-[env(safe-area-inset-top)] sm:px-4 lg:static">
       <div className="flex min-w-0 items-center gap-2">
         <button
           type="button"
