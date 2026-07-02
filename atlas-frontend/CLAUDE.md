@@ -72,7 +72,7 @@ Wire types (`lib/models/`) are re-exported from `lib/api.ts` so callers import f
 | Module | Storage | Lifetime | Purpose |
 |---|---|---|---|
 | `session.ts` | `localStorage` | permanent | Browser session id, book choice, display name, per-conversation token totals, per-chat composer drafts |
-| `api-key.ts` | `sessionStorage` | tab | Gemini API key — cleared on tab close, re-prompted on auth errors |
+| `api-key.ts` | `localStorage` | permanent | Gemini API key — asked once, re-prompted on auth errors |
 | `local-history.ts` | `localStorage` | permanent | Full `Message[]` transcripts + sidebar index (client-storage mode only) |
 | `settings.ts` | — | build-time | `MODELS` list, `DEFAULT_MODEL`, time constants |
 | `attachments.ts` | — | — | File validation, MIME→kind mapping, base64 encoding |

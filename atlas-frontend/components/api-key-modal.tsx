@@ -50,8 +50,8 @@ export function ApiKeyModal({ open, invalid = false, onSubmit }: ApiKeyModalProp
             Enter your Gemini API key
           </h2>
           <p className="mt-1 text-xs text-[var(--subtle)]">
-            Atlas uses your own key to run the model. It stays in this tab and is
-            sent only with your chat requests.
+            Atlas uses your own key to run the model. It stays on this device and
+            is sent only with your chat requests.
           </p>
         </div>
 

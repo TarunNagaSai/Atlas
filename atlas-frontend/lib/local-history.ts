@@ -67,6 +67,27 @@ export function listLocalChats(): LocalChatMeta[] {
   return readIndex().filter((c) => c.bookId === book);
 }
 
+/**
+ * Backfill a book tag onto an index entry that predates book-scoping (written
+ * before `bookId` existed). Those entries match no book and stay permanently
+ * hidden — including on repeat hydrate passes, since a seed already marked
+ * `isSeeded`/present locally is skipped before `saveLocalChat` ever runs again.
+ * No-op if the entry is missing, already tagged, or there's no active book yet.
+ */
+export function ensureBookTag(id: string): void {
+  const book = currentBookId();
+  if (!isBrowser() || !id || !book) return;
+  try {
+    const index = readIndex();
+    const entry = index.find((c) => c.id === id);
+    if (!entry || entry.bookId) return;
+    const next = index.map((c) => (c.id === id ? { ...c, bookId: book } : c));
+    localStorage.setItem(INDEX_KEY, JSON.stringify(next));
+  } catch {
+    // localStorage unavailable — worst case the entry stays hidden.
+  }
+}
+
 /** True once this conversation id has been hydrated from the DB seed source. */
 export function isSeeded(id: string): boolean {
   if (!isBrowser() || !id) return false;

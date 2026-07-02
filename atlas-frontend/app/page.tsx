@@ -21,6 +21,7 @@ import {
 } from "@/lib/api";
 import { loadBooks } from "@/lib/books";
 import {
+  ensureBookTag,
   isSeeded,
   listLocalChats,
   loadLocalChat,
@@ -139,9 +140,16 @@ export default function Home() {
   // the active chat and a brand-new "New analysis" starts at zero.
   const { usage, record } = useConversationUsage(activeId);
 
-  const { hasKey, ready: keyReady, save: saveKey, clear: clearKey } = useApiKey();
+  const {
+    hasKey,
+    skipped: keySkipped,
+    ready: keyReady,
+    save: saveKey,
+    clear: clearKey,
+    skip: skipKey,
+    unskip: unskipKey,
+  } = useApiKey();
   const [keyInvalid, setKeyInvalid] = useState(false);
-  const [keySkipped, setKeySkipped] = useState(false);
 
   // Derived — no extra open/close state needed.
   // "book" → no notebook chosen yet
@@ -150,14 +158,14 @@ export default function Home() {
   const setupStep: "book" | "key" | null =
     !selectedBook ? "book" : keyReady && !hasKey && !keySkipped ? "key" : null;
 
-  const handleSkipKey = useCallback(() => setKeySkipped(true), []);
+  const handleSkipKey = useCallback(() => skipKey(), [skipKey]);
 
   // Re-prompt when the backend rejects the request for a missing/invalid key.
   const handleAuthError = useCallback((invalid: boolean) => {
     clearKey(); // hasKey → false → setupStep becomes "key" automatically
     setKeyInvalid(invalid);
-    setKeySkipped(false); // force re-prompt if backend rejects
-  }, [clearKey]);
+    unskipKey(); // force re-prompt if backend rejects
+  }, [clearKey, unskipKey]);
 
   const handleConfirmBook = useCallback((bookId: string, name: string) => {
     selectBook(bookId, name); // selectedBook → truthy → setupStep advances to "key"
@@ -175,8 +183,8 @@ export default function Home() {
   const handleDeleteKey = useCallback(() => {
     track("api_key_deleted");
     clearKey(); // hasKey → false → setupStep becomes "key" automatically
-    setKeySkipped(false); // force re-prompt rather than silently staying keyless
-  }, [clearKey]);
+    unskipKey(); // force re-prompt rather than silently staying keyless
+  }, [clearKey, unskipKey]);
 
   const handleSwitchBook = useCallback(
     (bookId: string) => {
@@ -240,7 +248,10 @@ export default function Home() {
       const id = s.session_id;
       // Skip anything already pulled (marker) or already present locally (e.g. a
       // chat the visitor started themselves that happens to share an id space).
-      if (isSeeded(id) || loadLocalChat(id).length > 0) continue;
+      if (isSeeded(id) || loadLocalChat(id).length > 0) {
+        ensureBookTag(id);
+        continue;
+      }
       try {
         const conv = await fetchConversation(id);
         const msgs = turnsToMessages(conv.turns);

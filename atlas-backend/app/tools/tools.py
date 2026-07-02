@@ -126,6 +126,9 @@ def retrieve(
     top_k: int | None = None,
     api_key: str | None = None,
     book_id: str | None = None,
+    *,
+    fused_top_k: int | None = None,
+    passage_max_chars: int | None = None,
 ) -> str:
     """Search indexed documents and return relevant passages with citations.
 
@@ -146,14 +149,18 @@ def retrieve(
         return "retrieve requires a non-empty search query."
 
     s = get_settings()
+    # Per-run overrides (from the model's retrieval profile) win over the global
+    # defaults; ``passage_max_chars`` uses ``is not None`` because 0 (uncapped)
+    # is a valid, meaningful override that must not fall through to the default.
     top_k = top_k or s.final_top_k
+    fused = fused_top_k or s.fused_top_k
     with logfire.span("tool.retrieve", query=query, top_k=top_k, book_id=book_id):
         store = _get_store()
         gemini = get_gemini(api_key)
         query_vec = get_embedder(api_key).embed_query(query)
         # Cast a wide net (fused_top_k), then let the reranker restore precision.
         candidates = store.hybrid_search(
-            query, query_vec, top_k=s.fused_top_k, book_id=book_id
+            query, query_vec, top_k=fused, book_id=book_id
         )
         results = Reranker(s, gemini=gemini).rerank(query, candidates, top_k=top_k)
         logfire.info("retrieve found {n} passage(s)", n=len(results))
@@ -164,7 +171,7 @@ def retrieve(
             "query."
         )
 
-    cap = s.passage_max_chars
+    cap = passage_max_chars if passage_max_chars is not None else s.passage_max_chars
     blocks: list[str] = []
     seen: set[str] = set()
     for scored in results:
@@ -248,7 +255,14 @@ def graph_search(
 
 @observe(name="tool-dispatch", as_type="span")
 def run_tool(
-    name: str, args: dict, api_key: str | None = None, book_id: str | None = None
+    name: str,
+    args: dict,
+    api_key: str | None = None,
+    book_id: str | None = None,
+    *,
+    final_top_k: int | None = None,
+    fused_top_k: int | None = None,
+    passage_max_chars: int | None = None,
 ) -> str:
     """Dispatch a native function call from the agent.
 
@@ -256,13 +270,22 @@ def run_tool(
     returned to the model as a recoverable error string instead of raising.
     ``api_key`` is the caller's own key, forwarded to tools that hit Gemini;
     ``book_id`` scopes ``retrieve``/``graph_search`` to the user's selected book.
+    The ``*_top_k``/``passage_max_chars`` overrides carry the active model's
+    retrieval profile into ``retrieve`` (``None`` = use the global defaults).
     """
     if name == "retrieve":
         try:
             parsed = RetrieveArgs.model_validate(args)
         except ValidationError as e:
             return f"Invalid arguments for 'retrieve' ({e}). Provide a non-empty 'query' string."
-        return retrieve(parsed.query, api_key=api_key, book_id=book_id)
+        return retrieve(
+            parsed.query,
+            top_k=final_top_k,
+            api_key=api_key,
+            book_id=book_id,
+            fused_top_k=fused_top_k,
+            passage_max_chars=passage_max_chars,
+        )
 
     if name == "graph_search":
         try:
@@ -284,7 +307,13 @@ def run_tool(
 
 @observe(name="execute_tool_call", as_type="tool")
 async def execute_tool_call(
-    event: ToolCallEvent, *, api_key: str | None = None, book_id: str | None = None
+    event: ToolCallEvent,
+    *,
+    api_key: str | None = None,
+    book_id: str | None = None,
+    final_top_k: int | None = None,
+    fused_top_k: int | None = None,
+    passage_max_chars: int | None = None,
 ) -> tuple[str, list[types.Content]]:
     """Run a tool the model requested; return its result and the history turns.
 
@@ -299,12 +328,25 @@ async def execute_tool_call(
       - build the two conversation turns Gemini requires after a function call:
         the model's original function-call part (echoed verbatim so the Gemini
         3.x ``thought_signature`` survives) followed by the function response.
+
+    The ``*_top_k``/``passage_max_chars`` overrides are the active model's
+    retrieval profile, forwarded to ``retrieve`` (``None`` = global defaults).
     """
     name, args = event.name, event.args
     logfire.info("tool call: {tool} {args}", tool=name, args=args)
     try:
         with logfire.span("tool.execute", tool=name, tool_args=args):
-            result = await asyncio.to_thread(run_tool, name, args, api_key, book_id)
+            result = await asyncio.to_thread(
+                lambda: run_tool(
+                    name,
+                    args,
+                    api_key,
+                    book_id,
+                    final_top_k=final_top_k,
+                    fused_top_k=fused_top_k,
+                    passage_max_chars=passage_max_chars,
+                )
+            )
     except Exception as exc:  # noqa: BLE001 - surface to the model, don't kill the stream
         logfire.exception("tool {tool} failed", tool=name)
         result = (

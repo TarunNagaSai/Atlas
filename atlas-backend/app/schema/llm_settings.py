@@ -13,6 +13,22 @@ def _env(key: str, default: str) -> str:
     return os.environ.get(key, default)
 
 
+@dataclass(frozen=True)
+class RetrievalProfile:
+    """The model-dependent retrieval/eviction/hop knobs for one agent run.
+
+    Resolved once per run by :meth:`Settings.retrieval_profile` from the active
+    generation model, then threaded to the tool call and the eviction step so a
+    weak model (flash) can run a relaxed profile without affecting other models.
+    """
+
+    keep_recent_tool_results: int
+    passage_max_chars: int
+    final_top_k: int
+    fused_top_k: int
+    agent_max_hops: int
+
+
 class Settings:
     def __init__(self) -> None:
         # Accept either name; GOOGLE_API_KEY wins (matches the SDK's own precedence).
@@ -33,6 +49,37 @@ class Settings:
         # final allowed turn the agent drops its tools and forces an answer from
         # whatever it has already gathered (see run_agent).
         self.agent_max_hops: int = int(_env("AGENT_MAX_HOPS", "12"))
+
+        # --- Gemini 3.5 Flash runaway guard -------------------------------
+        # This lightweight model, run at temperature 0, is prone to a
+        # within-turn thinking runaway: it narrates "re-search, re-search, to be
+        # thorough" endlessly without ever committing to a function call or a
+        # final answer. Neither loop backstop catches this — the repeat-search
+        # breaker and max_hops only advance once a turn *completes* a tool call,
+        # which a turn stuck thinking never does. So for this model only, cap the
+        # thinking budget and nudge the temperature off greedy decoding (which is
+        # what self-reinforces the loop). Every other model is left untouched:
+        # matched by substring so a versioned id (…-preview) still trips it, and
+        # the lighter plan/graph models (gemini-3.1-flash-lite) never match.
+        self.flash_guard_model: str = _env("FLASH_GUARD_MODEL", "gemini-3.5-flash")
+        self.flash_thinking_level: str = _env("FLASH_THINKING_LEVEL", "LOW")
+        self.flash_temperature: float = float(_env("FLASH_TEMPERATURE", "0.3"))
+        # Relaxed *retrieval* profile for the flash model only. The token
+        # optimizations (eviction, passage cap, narrow top-k) starve this weak
+        # model of context: it re-searches to recover what was dropped, and —
+        # because each reworded query is a new key — the repeat-breaker can't
+        # catch the loop. So for flash we keep every tool result (no eviction),
+        # uncap passages, and widen retrieval, at the cost of more tokens on the
+        # cheapest model. Stronger models keep the cost-optimized defaults above.
+        # ``flash_agent_max_hops`` is a tighter backstop than the global one so a
+        # residual loop still bounds fast. All values env-overridable.
+        self.flash_keep_recent_tool_results: int = int(
+            _env("FLASH_KEEP_RECENT_TOOL_RESULTS", "99")
+        )
+        self.flash_passage_max_chars: int = int(_env("FLASH_PASSAGE_MAX_CHARS", "0"))
+        self.flash_final_top_k: int = int(_env("FLASH_FINAL_TOP_K", "6"))
+        self.flash_fused_top_k: int = int(_env("FLASH_FUSED_TOP_K", "8"))
+        self.flash_agent_max_hops: int = int(_env("FLASH_AGENT_MAX_HOPS", "6"))
 
         # --- Planning turn ------------------------------------------------
         # The tool-less planning turn runs before the ReAct loop. Its plan is
@@ -150,6 +197,40 @@ class Settings:
             for origin in _env("ALLOWED_ORIGINS", "").split(",")
             if origin.strip()
         ]
+
+    def is_flash_guard_model(self, model: str | None) -> bool:
+        """True only for the weak flash model the loop-guards target.
+
+        Matched by substring so a versioned id (…-preview) still trips it, but a
+        ``*-lite`` variant is explicitly excluded: ``gemini-3.1-flash-lite`` (the
+        cheaper planning/graph/rerank model) — and any future
+        ``gemini-3.5-flash-lite`` — is a different model that must keep the
+        default behaviour, never the relaxed flash profile or the thinking cap.
+        """
+        m = model or ""
+        return self.flash_guard_model in m and "lite" not in m
+
+    def retrieval_profile(self, model: str | None) -> RetrievalProfile:
+        """Resolve the retrieval/eviction/hop knobs for the active generation model.
+
+        gemini-3.5-flash gets the relaxed anti-loop profile (see the ``flash_*``
+        fields); every other model gets the cost-optimized defaults.
+        """
+        if self.is_flash_guard_model(model):
+            return RetrievalProfile(
+                keep_recent_tool_results=self.flash_keep_recent_tool_results,
+                passage_max_chars=self.flash_passage_max_chars,
+                final_top_k=self.flash_final_top_k,
+                fused_top_k=self.flash_fused_top_k,
+                agent_max_hops=self.flash_agent_max_hops,
+            )
+        return RetrievalProfile(
+            keep_recent_tool_results=self.keep_recent_tool_results,
+            passage_max_chars=self.passage_max_chars,
+            final_top_k=self.final_top_k,
+            fused_top_k=self.fused_top_k,
+            agent_max_hops=self.agent_max_hops,
+        )
 
     def require_key(self) -> str:
         if not self.api_key:

@@ -18,7 +18,13 @@
 import type { Message } from "@/types";
 import { getChatStorageMode } from "@/lib/models/chat";
 import { getSelectedBook, getSessionId } from "@/lib/session";
-import { isSeeded, loadLocalChat, markSeeded, saveLocalChat } from "@/lib/local-history";
+import {
+  ensureBookTag,
+  isSeeded,
+  loadLocalChat,
+  markSeeded,
+  saveLocalChat,
+} from "@/lib/local-history";
 import compareCompanies from "./compare-companies.json";
 
 interface StaticSeed {
@@ -56,7 +62,10 @@ export function hydrateStaticSeeds(): boolean {
   let wrote = false;
   for (const seed of STATIC_SEEDS) {
     if (seed.bookId !== activeBook) continue;
-    if (isSeeded(seed.id) || loadLocalChat(seed.id).length > 0) continue;
+    if (isSeeded(seed.id) || loadLocalChat(seed.id).length > 0) {
+      ensureBookTag(seed.id);
+      continue;
+    }
     saveLocalChat(seed.id, seed.messages);
     markSeeded(seed.id);
     wrote = true;

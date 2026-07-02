@@ -214,7 +214,13 @@ async def run_agent(
     system = _load_prompt()
     plan_system = _load_plan_prompt()
     force_system = _load_force_prompt()
-    max_hops = gemini.s.agent_max_hops
+    # Retrieval/eviction/hop knobs for *this* run's model. The weak flash model
+    # runs a relaxed profile (no eviction, uncapped passages, wider top-k, tighter
+    # hop backstop) so the token-opt starvation can't drive it into a re-search
+    # loop; stronger models keep the cost-optimized defaults. Resolved once here
+    # and threaded to the tool call and the eviction step below.
+    profile = gemini.s.retrieval_profile(turn_model)
+    max_hops = profile.agent_max_hops
     # Prior conversation first (so the agent has multi-turn memory), then this
     # turn. Gemini speaks ``user``/``model``; map the stored ``assistant`` role.
     contents: list[types.Content] = [
@@ -439,7 +445,12 @@ async def run_agent(
                 # recover from) and the client sees what the tool returned. Run
                 # inside the turn span so the tool's own @observe span nests here.
                 result, turns = await execute_tool_call(
-                    tool_call, api_key=api_key, book_id=book_id
+                    tool_call,
+                    api_key=api_key,
+                    book_id=book_id,
+                    final_top_k=profile.final_top_k,
+                    fused_top_k=profile.fused_top_k,
+                    passage_max_chars=profile.passage_max_chars,
                 )
                 yield ToolResultEvent(name=tool_call.name, result=result)
                 contents.extend(turns)
@@ -447,4 +458,4 @@ async def run_agent(
                 # the older passage dumps (which would otherwise be re-sent on
                 # every remaining hop) to a stub, keeping the most recent few
                 # intact so the model never loses what it is actively reasoning over.
-                _compact_old_tool_results(contents, gemini.s.keep_recent_tool_results)
+                _compact_old_tool_results(contents, profile.keep_recent_tool_results)

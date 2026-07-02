@@ -66,6 +66,7 @@ class Gemini:
         caller forwards thoughts on every turn and the answer on the final turn.
         """
         s = settings or ModelSettings(temperature=0.0)
+        model = s.model or self.s.gen_model
         # A tool-less turn (e.g. the agent's planning step) passes ``tools=[]``;
         # don't send ``tools``/``tool_config`` then — Gemini rejects an empty
         # tools list alongside a function-calling ``tool_config``.
@@ -76,19 +77,29 @@ class Gemini:
             if tools
             else None
         )
+        # Surface the model's reasoning as ``thought`` parts so the agent can
+        # stream it. Gemini returns *summarized* thoughts here.
+        thinking_config = types.ThinkingConfig(
+            include_thoughts=self.s.include_thoughts
+        )
+        temperature = s.temperature
+        # Gemini 3.5 Flash runaway guard (see Settings.is_flash_guard_model): for
+        # this model only, cap the thinking budget and lift the temperature off
+        # greedy decoding so it can't spin forever in its own reasoning. Other
+        # models — including the cheaper flash-*lite* — keep their full thinking
+        # budget and the caller's temperature.
+        if self.s.is_flash_guard_model(model):
+            thinking_config.thinking_level = self.s.flash_thinking_level
+            temperature = self.s.flash_temperature
         stream = await self.client.aio.models.generate_content_stream(
-            model=s.model or self.s.gen_model,
+            model=model,
             contents=contents,
             config=types.GenerateContentConfig(
                 system_instruction=system,
                 tools=tools or None,
                 tool_config=tool_config,
-                # Surface the model's reasoning as ``thought`` parts so the agent
-                # can stream it. Gemini returns *summarized* thoughts here.
-                thinking_config=types.ThinkingConfig(
-                    include_thoughts=self.s.include_thoughts
-                ),
-                temperature=s.temperature,
+                thinking_config=thinking_config,
+                temperature=temperature,
             ),
         )
         # ``aclosing`` guarantees ``stream.aclose()`` runs whenever this generator
