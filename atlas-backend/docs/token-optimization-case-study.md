@@ -130,7 +130,8 @@ Every change bought savings by giving something up. Being honest about the edges
 - **Eviction can trigger re-searches (§2.6).** This is the sharpest edge. Evict something the model
   still needs and it re-searches → burns a hop → risks hitting `agent_max_hops` and the
   *force-answer* path, which answers from **incomplete** evidence. The conservative `keep_recent = 2`
-  default is what keeps this safe; lowering it trades more savings for this risk.
+  default is what keeps this safe; lowering it trades more savings for this risk. **This edge
+  materialized on `gemini-3.5-flash` and forced a model-specific carve-out — see §8.**
 - **Eviction fights caching (§2.5 vs §2.6).** Rewriting older results busts the implicit cache from
   that point forward. Net-positive (full removal beats a ~25%-discounted re-send), but it means you
   won't see cache hits covering the evicted region.
@@ -157,6 +158,19 @@ Every change bought savings by giving something up. Being honest about the edges
 | `KEEP_RECENT_TOOL_RESULTS` | `2` | Recent tool results kept intact before eviction |
 | `AGENT_MAX_HOPS` | `12` | Safety backstop on the ReAct loop |
 
+**Flash carve-out (§8) — applied only when the generation model is `gemini-3.5-flash`:**
+
+| Env var | Default | Purpose |
+|---|---|---|
+| `FLASH_KEEP_RECENT_TOOL_RESULTS` | `99` | Effectively disables eviction for flash |
+| `FLASH_PASSAGE_MAX_CHARS` | `0` | Uncaps passages for flash |
+| `FLASH_FINAL_TOP_K` | `6` | Wider retrieval for flash |
+| `FLASH_FUSED_TOP_K` | `8` | Fusion candidates for flash (unchanged from global) |
+| `FLASH_AGENT_MAX_HOPS` | `6` | Tighter loop backstop for flash |
+| `FLASH_THINKING_LEVEL` | `LOW` | Caps flash's thinking budget |
+| `FLASH_TEMPERATURE` | `0.3` | Lifts flash off greedy decoding |
+| `FLASH_GUARD_MODEL` | `gemini-3.5-flash` | Substring that selects the carve-out (never matches a `*-lite` id) |
+
 ## 7. How to verify
 
 1. Re-run the benchmark query and read the token counter in the UI (should land near ~10K).
@@ -164,9 +178,67 @@ Every change bought savings by giving something up. Being honest about the edges
    zero, the model tier isn't meeting the implicit-cache minimum prefix size.
 3. Watch for re-searches in the trace — a sign `KEEP_RECENT_TOOL_RESULTS` is too low for your workload.
 
-## 8. What's next (not yet done)
+## 8. Follow-up: `gemini-3.5-flash` opts out of the aggressive profile
+
+**Date:** 2026-07-02 (same-day follow-up)
+
+The eviction risk flagged in §5 stopped being hypothetical. On **`gemini-3.5-flash`** — the weakest
+model in the lineup — a broad question ("current wireless subscriber market share of Reliance Jio
+per the latest TRAI data") drove an **apparently infinite re-search loop**: the model narrated
+"re-search, to be thorough" indefinitely, cycling reworded/OR-combined queries and never answering.
+
+### Why the optimizations caused it
+
+The three context-shrinking levers compounded against a weak model:
+
+1. **Eviction (§2.6)** stubbed out all but the last `KEEP_RECENT_TOOL_RESULTS = 2` results, so the
+   model kept "forgetting" what it had already found.
+2. **Passage cap (§2.2, 1400 chars)** and **narrow retrieval (§2.3, `FINAL_TOP_K = 4`)** meant each
+   individual search returned too little for it to feel done.
+3. So it re-searched to recover the dropped context — exactly the failure §5 predicted.
+
+### Why the existing guardrails didn't catch it
+
+- The **repeat-search breaker** (`_query_key` in `app/agent/agent.py`) canonicalizes a query by
+  sorting/singularizing its tokens — but the model evaded it by permuting an **OR-combined
+  multi-term query** every turn, so each reworded repeat produced a *different* key.
+- **Thinking was unbounded.** A first attempt to cap it with `ThinkingConfig(thinking_level="LOW")`
+  did not stop the loop on its own, because the real driver was context starvation, not thinking
+  verbosity.
+
+### The fix — a model-scoped carve-out
+
+Rather than roll back the optimizations globally (which would surrender the ~70% win on every
+capable model), `gemini-3.5-flash` now runs a **relaxed retrieval profile** while every other model
+keeps the cost-optimized defaults:
+
+- No eviction (`keep_recent = 99`), uncapped passages (`0`), wider recall (`final_top_k = 6`), and a
+  **tighter** hop backstop (`agent_max_hops = 6`) so any residual loop bounds fast.
+- Plus the thinking cap (`thinking_level = LOW`) and a temperature lift (`0.0 → 0.3`) to break the
+  greedy-decoding repetition that temperature-0 encourages on a small model.
+
+Selection is centralized in `Settings.is_flash_guard_model(model)`, resolved once per run into a
+`RetrievalProfile` and threaded to the tool call and the eviction step. The matcher is a substring
+test that **explicitly excludes any `*-lite` id** — `gemini-3.1-flash-lite` (the planning/graph/
+rerank model) and any future `gemini-3.5-flash-lite` keep the default behaviour. Every knob is
+env-overridable (see the flash carve-out table in §6).
+
+**Result:** the same TRAI query now resolves in **3 clean searches** with a grounded, cited answer,
+well under the flash hop ceiling.
+
+### The trade-off, stated plainly
+
+Flash runs are now **more expensive than the optimized path** — no eviction, full passages, wider
+top-k. That is an accepted, deliberate cost: flash is the cheapest model per token, and a correct
+answer beats a cheap infinite loop. The optimizations remain fully in force for every model strong
+enough to tolerate them.
+
+## 9. What's next (not yet done)
 
 Build a **Langfuse eval dataset** from real traces (~30–50 queries with expected answers/behaviors).
 That converts any further prompt trimming from "looks safe" into "measured safe," and is the
 prerequisite for an automated prompt-optimization loop (e.g. PhaseEvo-style evolutionary search
 with token count folded into the fitness function).
+
+A natural addition: a **per-model regression query** (like the TRAI question) that would catch a
+starvation-loop regression on any weak model before it ships.
