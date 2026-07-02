@@ -131,7 +131,7 @@ export function EmptyState({
               track("suggestion_clicked", { title: s.title });
               onPick(s.prompt);
             }}
-            className="group flex items-start gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3.5 text-left shadow-[var(--shadow-sm)] transition-all hover:border-[var(--accent)] hover:shadow-[var(--shadow-md)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-ring)]"
+            className="group flex items-center gap-3 rounded-xl sm:items-start border border-[var(--border)] bg-[var(--surface)] p-3.5 text-left shadow-[var(--shadow-sm)] transition-all hover:border-[var(--accent)] hover:shadow-[var(--shadow-md)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-ring)]"
           >
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent)]">
               <s.icon className="h-[18px] w-[18px]" />
@@ -140,7 +140,7 @@ export function EmptyState({
               <div className="text-sm font-medium text-[var(--foreground)]">
                 {s.title}
               </div>
-              <div className="mt-0.5 text-xs leading-relaxed text-[var(--muted)]">
+              <div className="mt-0.5 hidden text-xs leading-relaxed text-[var(--muted)] sm:block">
                 {s.prompt}
               </div>
             </div>

@@ -3,10 +3,10 @@ export const BUSINESS_POINTS = [
     title: "Autonomous document reasoning",
     body: "Atlas doesn't just retrieve — it reasons. The agentic loop plans, retrieves, reflects, and iterates until it has enough context to answer with confidence.",
   },
-  {
-    title: "Live web search for current trends",
-    body: "When documents aren't enough, Atlas reaches out to the web in real time — pulling in the latest market news, analyst sentiment, and macro trends to enrich its answers.",
-  },
+  // {
+  //   title: "Live web search for current trends",
+  //   body: "When documents aren't enough, Atlas reaches out to the web in real time — pulling in the latest market news, analyst sentiment, and macro trends to enrich its answers.",
+  // },
   {
     title: "Multi-step financial research",
     body: "Ask compound questions across multiple filings. Atlas breaks them down, runs sub-queries in parallel, and synthesises a single coherent answer.",
