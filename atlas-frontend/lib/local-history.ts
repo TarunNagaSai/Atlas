@@ -14,6 +14,7 @@
 
 import type { Message } from "@/types";
 import { isBrowser } from "@/lib/utils";
+import { getSelectedBook, getSessionId } from "@/lib/session";
 
 const CHAT_PREFIX = "atlas.chat.";
 const INDEX_KEY = "atlas.chats.index";
@@ -28,10 +29,20 @@ export interface LocalChatMeta {
   id: string;
   title: string;
   updatedAt: number;
+  /**
+   * The notebook this chat belongs to. Undefined for legacy entries written
+   * before history was book-scoped — those match no book and stay hidden.
+   */
+  bookId?: string;
 }
 
-/** The sidebar index, most-recently-updated first. Empty during SSR or if unset. */
-export function listLocalChats(): LocalChatMeta[] {
+/** The notebook currently in use, mirroring `sessionHeaders()` in lib/api.ts. */
+function currentBookId(): string | null {
+  return getSelectedBook(getSessionId());
+}
+
+/** The full, unfiltered index (all books), most-recently-updated first. */
+function readIndex(): LocalChatMeta[] {
   if (!isBrowser()) return [];
   try {
     const raw = localStorage.getItem(INDEX_KEY);
@@ -43,6 +54,17 @@ export function listLocalChats(): LocalChatMeta[] {
   } catch {
     return [];
   }
+}
+
+/**
+ * The sidebar index for the active notebook, most-recently-updated first.
+ * Scoped to the current book so switching notebooks shows only that book's
+ * chats (its own DB/static seeds included). Empty during SSR or if unset.
+ */
+export function listLocalChats(): LocalChatMeta[] {
+  const book = currentBookId();
+  if (!book) return [];
+  return readIndex().filter((c) => c.bookId === book);
 }
 
 /** True once this conversation id has been hydrated from the DB seed source. */
@@ -109,7 +131,9 @@ export function saveLocalChat(id: string, messages: Message[]): void {
     const prevRaw = localStorage.getItem(CHAT_PREFIX + id);
     localStorage.setItem(CHAT_PREFIX + id, serialized);
 
-    const index = listLocalChats();
+    // The full index (all books) — never filter here, or rewriting would drop
+    // every other notebook's chats.
+    const index = readIndex();
     const existing = index.find((c) => c.id === id);
     // Nothing changed (this is an open/replay of an already-stored chat): leave
     // the index — and thus the title and ordering — exactly as it was.
@@ -119,8 +143,11 @@ export function saveLocalChat(id: string, messages: Message[]): void {
     const title =
       existing?.title ??
       (firstUser.trim().slice(0, 80) || "Untitled conversation");
+    // Tag the chat with the notebook it belongs to so the sidebar can scope by
+    // book. Preserve an existing entry's book (chats never migrate notebooks).
+    const bookId = existing?.bookId ?? currentBookId() ?? undefined;
     const others = index.filter((c) => c.id !== id);
-    const next = [{ id, title, updatedAt: Date.now() }, ...others];
+    const next = [{ id, title, updatedAt: Date.now(), bookId }, ...others];
     localStorage.setItem(INDEX_KEY, JSON.stringify(next));
   } catch {
     // localStorage full/unavailable — non-critical; the in-memory thread is intact.

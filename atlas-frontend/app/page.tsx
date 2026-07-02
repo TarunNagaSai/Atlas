@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BookPicker } from "@/components/book-picker";
 import { ChatHistory } from "@/components/chat-history";
 import { ChatInput, type ChatInputHandle } from "@/components/chat-input";
@@ -30,6 +30,7 @@ import {
 import { hydrateStaticSeeds } from "@/lib/seeds";
 import { useConversationUsage, useSession } from "@/lib/session";
 import type { AgentStep, ChatSession, Message, ThinkingStep } from "@/types";
+import { track } from "@vercel/analytics";
 
 /** Map a persisted conversation's turns into the flat Message list the thread renders. */
 function turnsToMessages(turns: ConversationTurn[]): Message[] {
@@ -164,6 +165,7 @@ export default function Home() {
 
   const handleSaveKey = useCallback(
     (key: string) => {
+      track("api_key_added");
       saveKey(key); // hasKey → true → setupStep becomes null
       setKeyInvalid(false);
     },
@@ -279,37 +281,37 @@ export default function Home() {
   const initedRef = useRef(false);
   useEffect(() => {
     if (!ready) return;
-    // Bundled demo chats (with images) hydrate synchronously; server-seeded
-    // (text-only) chats hydrate over the network. Refresh after each so the
-    // sidebar shows them (both are client-mode-only no-ops otherwise).
-    hydrateStaticSeeds();
-    refreshSessions();
-    hydrateSeeds().then(refreshSessions);
     if (!initedRef.current) {
       initedRef.current = true;
       setActiveId(crypto.randomUUID());
     }
-  }, [ready, refreshSessions, hydrateSeeds]);
+  }, [ready]);
 
-  // Refetch sessions and start a fresh chat whenever the active book changes.
+  // Seeds and the sidebar are scoped to the active notebook, so hydration must
+  // wait for a book to be chosen and re-run whenever it changes — a first-time
+  // visitor has no book until they pick one, and seeds tagged with "no book"
+  // would never surface. Fires on the initial book (null → value) and on every
+  // switch after; a real switch also resets to a fresh chat.
   const prevBookRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!selectedBook) return;
-    if (prevBookRef.current === null) {
-      prevBookRef.current = selectedBook;
-      return;
-    }
-    if (prevBookRef.current === selectedBook) return;
+    if (!ready || !selectedBook) return;
+    const switched =
+      prevBookRef.current !== null && prevBookRef.current !== selectedBook;
     prevBookRef.current = selectedBook;
-    selectedIdRef.current = null;
-    setActiveId(crypto.randomUUID());
-    clearMessages();
+    if (switched) {
+      selectedIdRef.current = null;
+      setActiveId(crypto.randomUUID());
+      clearMessages();
+    }
+    // Bundled demo chats (with images) hydrate synchronously; server-seeded
+    // (text-only) chats hydrate over the network. Both are book-scoped (the
+    // static seed and X-Book-Id fetch tag localStorage with the current book).
+    // Refresh after each so the sidebar shows them (client-mode-only no-ops
+    // otherwise).
     hydrateStaticSeeds();
     refreshSessions();
-    // A different book has its own server-seeded chats (X-Book-Id scopes the
-    // fetch); pull them in, then refresh the sidebar to show them.
     hydrateSeeds().then(refreshSessions);
-  }, [selectedBook, clearMessages, refreshSessions, hydrateSeeds]);
+  }, [ready, selectedBook, clearMessages, refreshSessions, hydrateSeeds]);
 
   // Client-side storage mode: persist the live transcript to localStorage and
   // keep the sidebar in sync. No-op in DB mode (the backend owns history there).
@@ -388,6 +390,24 @@ export default function Home() {
     messages.find((m) => m.role === "user")?.content.trim().slice(0, 80) ??
     "New analysis";
 
+  // Show the active chat in the sidebar the moment it has a question, rather
+  // than waiting for the turn to finish. In DB mode the real list only refreshes
+  // on turn-complete, so without this a chat wouldn't appear in history while the
+  // AI is still answering. We inject an optimistic entry keyed by the active id;
+  // once refreshSessions pulls the persisted list (which includes this id) the
+  // optimistic entry is dropped in favor of the server one — same id, no dupe.
+  const displaySessions = useMemo(() => {
+    if (!activeId || sessions.some((s) => s.id === activeId)) return sessions;
+    const firstUser = messages.find((m) => m.role === "user")?.content.trim();
+    if (!firstUser) return sessions;
+    const optimistic: ChatSession = {
+      id: activeId,
+      title: firstUser.slice(0, 80) || "Untitled conversation",
+      updatedAt: Date.now(),
+    };
+    return [optimistic, ...sessions];
+  }, [sessions, activeId, messages]);
+
   // Steps from the most recent assistant turn — shown live in the RagPanel.
   const latestSteps = [...messages]
     .reverse()
@@ -409,7 +429,7 @@ export default function Home() {
         onSkip={handleSkipKey}
       />
       <ChatHistory
-        sessions={sessions}
+        sessions={displaySessions}
         activeId={activeId}
         onSelect={handleSelectSession}
         onNewChat={handleNewChat}

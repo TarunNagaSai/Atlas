@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Download, FileText, Database, Github, ChevronDown, ChevronUp, Wrench } from "lucide-react";
+import { track } from "@vercel/analytics";
 import { cn } from "@/lib/utils";
 import type { AgentStep } from "@/types";
 import { AboutModal } from "./about-modal";
@@ -101,6 +102,7 @@ export function RagPanel({ selectedBook, fileCount, open, onClose, steps }: RagP
             target="_blank"
             rel="noopener noreferrer"
             aria-label="View source on GitHub"
+            onClick={() => track("github_source_clicked")}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--muted)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-ring)]"
           >
             <Github className="h-4 w-4" />
@@ -111,7 +113,7 @@ export function RagPanel({ selectedBook, fileCount, open, onClose, steps }: RagP
           </div>
           <button
             type="button"
-            onClick={() => setAboutOpen(true)}
+            onClick={() => { track("about_opened"); setAboutOpen(true); }}
             className="flex h-6 shrink-0 items-center justify-center rounded-md px-2 text-xs text-[var(--subtle)] transition-colors hover:bg-[var(--surface-3)] hover:text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-ring)]"
           >
             About

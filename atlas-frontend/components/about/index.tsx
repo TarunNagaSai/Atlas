@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { X, Layers, Cpu, User } from "lucide-react";
+import { track } from "@vercel/analytics";
 import { cn } from "@/lib/utils";
 import { OverviewTab } from "./overview-tab";
 import { StackTab } from "./stack-tab";
@@ -51,7 +52,7 @@ export function AboutModal({ open, onClose }: AboutModalProps) {
             <button
               key={t}
               type="button"
-              onClick={() => setTab(t)}
+              onClick={() => { track("about_tab_viewed", { tab: t }); setTab(t); }}
               className={cn(
                 "flex items-center gap-1.5 rounded-t-md px-3 pb-2.5 pt-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-ring)]",
                 tab === t

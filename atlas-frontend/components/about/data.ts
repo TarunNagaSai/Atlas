@@ -66,6 +66,10 @@ export const AI_TECHNIQUES = [
     title: "Hybrid Search",
     body: "Combines dense vector similarity with BM25 keyword search, then fuses scores — maximising recall for both semantic and exact-match queries.",
   },
+  {
+    title: "A2UI",
+    body: "The Agent-to-UI protocol lets the agent emit structured UI directives alongside its reasoning — rendering interactive components inline instead of forcing every answer into plain text.",
+  },
   // {
   //   title: "Reranking",
   //   body: "A cross-encoder reranker re-scores retrieved chunks for query relevance before they reach the LLM, cutting noise from the context window.",
@@ -82,4 +86,5 @@ export const AI_TECHNIQUES = [
     title: "LLM-as-a-Judge",
     body: "A secondary LLM scores each response for faithfulness, relevance, and completeness — making evaluation systematic and reproducible.",
   },
+  
 ];
