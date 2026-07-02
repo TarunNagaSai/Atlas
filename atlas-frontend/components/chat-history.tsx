@@ -34,6 +34,8 @@ import type { ChatSession } from "@/types";
 
 interface ChatHistoryProps {
   sessions: ChatSession[];
+  /** True while the session list is being fetched for the first time. */
+  loading?: boolean;
   activeId: string | null;
   onSelect: (id: string) => void;
   onNewChat: () => void;
@@ -77,6 +79,7 @@ function groupSessions(sessions: ChatSession[]) {
 
 export function ChatHistory({
   sessions,
+  loading = false,
   activeId,
   onSelect,
   onNewChat,
@@ -234,6 +237,8 @@ export function ChatHistory({
             })}
           </div>
         </div>
+        {/* Loading shimmer — first fetch of the session list. */}
+        {loading && sessions.length === 0 && <ChatHistorySkeleton />}
         {/* Previous 7 days and Earlier groups */}
         {groups
           .filter((g) => g.label !== "Today")
@@ -319,5 +324,26 @@ export function ChatHistory({
       onSwitchBook={onSwitchBook}
     />
     </>
+  );
+}
+
+/** Placeholder rows shown while the session list is loading. */
+function ChatHistorySkeleton() {
+  // Varied widths so the shimmer reads like a real list of chat titles.
+  const widths = ["78%", "62%", "85%", "55%", "70%", "48%"];
+  return (
+    <div className="mb-3 animate-pulse" aria-hidden>
+      <div className="px-2 pb-1 pt-2">
+        <div className="h-2 w-16 rounded bg-[var(--surface-2)]" />
+      </div>
+      <div className="space-y-0.5">
+        {widths.map((w, i) => (
+          <div key={i} className="flex items-center gap-2.5 rounded-lg px-2.5 py-2">
+            <div className="h-4 w-4 shrink-0 rounded bg-[var(--surface-2)]" />
+            <div className="h-3 rounded bg-[var(--surface-2)]" style={{ width: w }} />
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

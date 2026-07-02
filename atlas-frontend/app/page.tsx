@@ -132,6 +132,9 @@ export default function Home() {
   // (or we adopt the one we clicked in the sidebar).
   const [activeId, setActiveId] = useState<string | null>(null);
   const [chatLoading, setChatLoading] = useState(false);
+  // True until the sidebar session list first resolves, so the history area can
+  // show a shimmer instead of an empty gap while fetchSessions is in flight.
+  const [sessionsLoading, setSessionsLoading] = useState(true);
   const [panelOpen, setPanelOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
 
@@ -210,6 +213,7 @@ export default function Home() {
           updatedAt: c.updatedAt,
         })),
       );
+      setSessionsLoading(false);
       return;
     }
     fetchSessions()
@@ -225,7 +229,8 @@ export default function Home() {
       .catch(() => {
         // Sidebar is non-critical; leave whatever's there and let the next
         // turn-complete refresh retry.
-      });
+      })
+      .finally(() => setSessionsLoading(false));
   }, []);
 
   // Client mode only: one-time hydrate of DB-seeded conversations into
@@ -447,6 +452,7 @@ export default function Home() {
       />
       <ChatHistory
         sessions={displaySessions}
+        loading={sessionsLoading}
         activeId={activeId}
         onSelect={handleSelectSession}
         onNewChat={handleNewChat}
