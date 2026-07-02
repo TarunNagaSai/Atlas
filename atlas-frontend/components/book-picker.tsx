@@ -14,7 +14,7 @@ import {
   User,
 } from "lucide-react";
 import { track } from "@vercel/analytics";
-import { fetchBooks, type Book } from "@/lib/api";
+import { useBooks } from "@/lib/books";
 import { validateGeminiKey } from "@/lib/validate-gemini-key";
 
 interface BookPickerProps {
@@ -30,12 +30,11 @@ interface BookPickerProps {
 
 export function BookPicker({ step, keyInvalid = false, onConfirmBook, onSaveKey, onSkip }: BookPickerProps) {
   // ── Step 1: book selection ────────────────────────────────────────────────
-  const [books, setBooks] = useState<Book[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
+  // Books come from the shared store (fetched once at app open), not a per-open
+  // network call.
+  const { books, loading, error: fetchError, reload } = useBooks();
   const [picked, setPicked] = useState<string | null>(null);
   const [name, setName] = useState("");
-  const [reloadKey, setReloadKey] = useState(0);
 
   // ── Step 2: API key ───────────────────────────────────────────────────────
   const [keyInput, setKeyInput] = useState("");
@@ -55,25 +54,6 @@ export function BookPicker({ step, keyInvalid = false, onConfirmBook, onSaveKey,
       setKeyError(null);
     }
   }, [step]);
-
-  // Load books when step 1 is shown
-  useEffect(() => {
-    if (step !== "book") return;
-    const ctrl = new AbortController();
-    setLoading(true);
-    setFetchError(null);
-
-    fetchBooks({ signal: ctrl.signal })
-      .then((b) => setBooks(b))
-      .catch((e) => {
-        if ((e as Error)?.name !== "AbortError") {
-          setFetchError(e instanceof Error ? e.message : String(e));
-        }
-      })
-      .finally(() => setLoading(false));
-
-    return () => ctrl.abort();
-  }, [reloadKey, step]);
 
   if (!step) return null;
 
@@ -177,7 +157,7 @@ export function BookPicker({ step, keyInvalid = false, onConfirmBook, onSaveKey,
                   <p className="max-w-sm text-xs text-[var(--muted)]">{fetchError}</p>
                   <button
                     type="button"
-                    onClick={() => setReloadKey((k) => k + 1)}
+                    onClick={reload}
                     className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-medium transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
                   >
                     <RotateCw className="h-3.5 w-3.5" />
@@ -263,7 +243,9 @@ export function BookPicker({ step, keyInvalid = false, onConfirmBook, onSaveKey,
                   {keyError ?? "Key is invalid."}
                 </div>
               )}
-
+              <label htmlFor="user-name" className="mb-1.5 block text-sm font-medium">
+                  Gemini API Key
+                </label>
               <div className="relative">
                 <KeyRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
                 <input

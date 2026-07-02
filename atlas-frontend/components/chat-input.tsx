@@ -49,6 +49,8 @@ interface ChatInputProps {
   /** True while a turn is generating — swaps Send for Stop. */
   streaming?: boolean;
   disabled?: boolean;
+  /** Whether a Gemini API key is set. When false the composer is locked. */
+  hasApiKey?: boolean;
   tokensUsed: number;
   /**
    * The active conversation id. Unsent composer text is drafted per chat under
@@ -70,6 +72,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
       onStop,
       streaming,
       disabled,
+      hasApiKey = true,
       tokensUsed,
       draftKey,
     },
@@ -232,7 +235,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
 
   const submit = () => {
     const text = value.trim();
-    if ((!text && files.length === 0) || disabled) return;
+    if ((!text && files.length === 0) || disabled || !hasApiKey) return;
     onSend(text, selectedModel, files.map((f) => f.file));
     setValue("");
     setDraft(draftKeyRef.current, ""); // the turn is sent — clear its draft
@@ -258,7 +261,10 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
     el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
   };
 
-  const canSend = (!!value.trim() || files.length > 0) && !disabled;
+  // No API key → the composer is inert: text entry, attachments, and Send are
+  // all blocked until a key is provided (the setup/settings flow handles that).
+  const locked = !hasApiKey;
+  const canSend = (!!value.trim() || files.length > 0) && !disabled && !locked;
 
   return (
     <div className="bg-[var(--background)] px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2 sm:px-4">
@@ -296,6 +302,13 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
             <p className="px-1.5 text-xs text-[var(--danger,#e5484d)]">{attachError}</p>
           )}
 
+          {/* Composer is locked until a Gemini API key is provided */}
+          {locked && (
+            <p className="px-1.5 text-xs text-[var(--subtle)]">
+              Add a Gemini API key to start chatting.
+            </p>
+          )}
+
           {/* Hidden native picker, driven by the paperclip */}
           <input
             ref={fileInputRef}
@@ -315,8 +328,13 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
             value={value}
             onChange={autoGrow}
             onKeyDown={handleKeyDown}
+            disabled={locked}
             rows={1}
-            placeholder="Ask about your filings, contracts, or reports…"
+            placeholder={
+              locked
+                ? "Add a Gemini API key to start chatting…"
+                : "Ask about your filings, contracts, or reports…"
+            }
             className="max-h-[200px] w-full resize-none bg-transparent px-2 py-1.5 text-base text-[var(--foreground)] outline-none placeholder:text-[var(--subtle)] disabled:cursor-not-allowed sm:text-sm"
           />
 
@@ -331,7 +349,8 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
                 aria-label="Attach files"
                 title="Attach images, PDF, Word, or Excel"
                 onClick={openPicker}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[var(--subtle)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-ring)]"
+                disabled={locked}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[var(--subtle)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-ring)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-[var(--subtle)]"
               >
                 <Paperclip className="h-[18px] w-[18px]" />
               </button>

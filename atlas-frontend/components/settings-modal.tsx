@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AlertTriangle, BookOpen, Check, Eye, EyeOff, KeyRound, Loader2, Moon, RotateCw, Settings, Sun, X } from "lucide-react";
-import { fetchBooks, type Book } from "@/lib/api";
+import { useBooks } from "@/lib/books";
 import { validateGeminiKey } from "@/lib/validate-gemini-key";
 
 interface SettingsModalProps {
@@ -31,12 +31,10 @@ export function SettingsModal({
   const [validating, setValidating] = useState(false);
   const [keyError, setKeyError] = useState<string | null>(null);
 
-  // Book picker state
-  const [books, setBooks] = useState<Book[]>([]);
-  const [booksLoading, setBooksLoading] = useState(false);
-  const [booksError, setBooksError] = useState<string | null>(null);
+  // Books come from the shared store (fetched once at app open), not a fresh
+  // network call each time the modal opens.
+  const { books, loading: booksLoading, error: booksError, reload: reloadBooks } = useBooks();
   const [pickedBook, setPickedBook] = useState<string | null>(null);
-  const [booksReloadKey, setBooksReloadKey] = useState(0);
 
   useEffect(() => {
     if (open) {
@@ -47,23 +45,6 @@ export function SettingsModal({
       setPickedBook(selectedBook);
     }
   }, [open, selectedBook]);
-
-  // Fetch books when modal opens
-  useEffect(() => {
-    if (!open) return;
-    const ctrl = new AbortController();
-    setBooksLoading(true);
-    setBooksError(null);
-    fetchBooks({ signal: ctrl.signal })
-      .then((b) => setBooks(b))
-      .catch((e) => {
-        if ((e as Error)?.name !== "AbortError") {
-          setBooksError(e instanceof Error ? e.message : String(e));
-        }
-      })
-      .finally(() => setBooksLoading(false));
-    return () => ctrl.abort();
-  }, [open, booksReloadKey]);
 
   if (!open) return null;
 
@@ -174,7 +155,7 @@ export function SettingsModal({
                 </div>
                 <button
                   type="button"
-                  onClick={() => setBooksReloadKey((k) => k + 1)}
+                  onClick={reloadBooks}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-medium transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
                 >
                   <RotateCw className="h-3.5 w-3.5" />

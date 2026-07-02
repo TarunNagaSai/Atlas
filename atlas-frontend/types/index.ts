@@ -38,6 +38,13 @@ export interface MessageAttachment {
   /** Coarse kind, drives the chip icon. Mirrors lib/attachments AttachmentKind. */
   kind: "image" | "pdf" | "word" | "excel";
   size: number;
+  /**
+   * Optional renderable source for the attachment (a static asset path or data
+   * URL). Live-sent attachments don't carry this — the bytes go to the model in
+   * the request body and only the chip metadata is kept. Seeded demo chats set
+   * it so an image attachment can be shown inline on replay.
+   */
+  src?: string;
 }
 
 export interface Message {

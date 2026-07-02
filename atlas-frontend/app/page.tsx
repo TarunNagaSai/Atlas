@@ -19,7 +19,15 @@ import {
   type ConversationTurn,
   type StreamSource,
 } from "@/lib/api";
-import { listLocalChats, loadLocalChat, saveLocalChat } from "@/lib/local-history";
+import { loadBooks } from "@/lib/books";
+import {
+  isSeeded,
+  listLocalChats,
+  loadLocalChat,
+  markSeeded,
+  saveLocalChat,
+} from "@/lib/local-history";
+import { hydrateStaticSeeds } from "@/lib/seeds";
 import { useConversationUsage, useSession } from "@/lib/session";
 import type { AgentStep, ChatSession, Message, ThinkingStep } from "@/types";
 
@@ -204,6 +212,38 @@ export default function Home() {
       });
   }, []);
 
+  // Client mode only: one-time hydrate of DB-seeded conversations into
+  // localStorage. Production runs client-side (the browser owns history), but a
+  // curated demo chat is seeded server-side; this pulls each such conversation
+  // down once, converts it to the local transcript shape, and hands it to
+  // saveLocalChat. From then on it lives in localStorage like any other client
+  // chat — visible in the sidebar and continued purely client-side (no persist).
+  // fetchSessions/fetchConversation are book-scoped via X-Book-Id in their
+  // headers, so this only pulls seeds for the visitor's selected book.
+  const hydrateSeeds = useCallback(async () => {
+    if (STORAGE_MODE !== "client") return;
+    let list: Awaited<ReturnType<typeof fetchSessions>>;
+    try {
+      list = await fetchSessions({ limit: 200 });
+    } catch {
+      return; // Seeding is best-effort; offline/unreachable just means no seeds.
+    }
+    for (const s of list) {
+      const id = s.session_id;
+      // Skip anything already pulled (marker) or already present locally (e.g. a
+      // chat the visitor started themselves that happens to share an id space).
+      if (isSeeded(id) || loadLocalChat(id).length > 0) continue;
+      try {
+        const conv = await fetchConversation(id);
+        const msgs = turnsToMessages(conv.turns);
+        if (msgs.length) saveLocalChat(id, msgs);
+      } catch {
+        // One seed failing shouldn't block the rest.
+      }
+      markSeeded(id); // Mark regardless, so a failed pull isn't retried forever.
+    }
+  }, []);
+
   const { messages, thinking, handleSend, handleStop, clearMessages, loadMessages } =
     useChatStream({
       record,
@@ -230,15 +270,26 @@ export default function Home() {
   // brand-new chat isn't listed in the sidebar until the visitor asks something
   // (saveLocalChat skips empty transcripts); the pinned "New analysis" row
   // represents it in the meantime.
+  // Fetch the notebook list once at app open; every consumer (BookPicker,
+  // SettingsModal, EmptyState) reads it from the shared store via useBooks.
+  useEffect(() => {
+    loadBooks();
+  }, []);
+
   const initedRef = useRef(false);
   useEffect(() => {
     if (!ready) return;
+    // Bundled demo chats (with images) hydrate synchronously; server-seeded
+    // (text-only) chats hydrate over the network. Refresh after each so the
+    // sidebar shows them (both are client-mode-only no-ops otherwise).
+    hydrateStaticSeeds();
     refreshSessions();
+    hydrateSeeds().then(refreshSessions);
     if (!initedRef.current) {
       initedRef.current = true;
       setActiveId(crypto.randomUUID());
     }
-  }, [ready, refreshSessions]);
+  }, [ready, refreshSessions, hydrateSeeds]);
 
   // Refetch sessions and start a fresh chat whenever the active book changes.
   const prevBookRef = useRef<string | null>(null);
@@ -253,8 +304,12 @@ export default function Home() {
     selectedIdRef.current = null;
     setActiveId(crypto.randomUUID());
     clearMessages();
+    hydrateStaticSeeds();
     refreshSessions();
-  }, [selectedBook, clearMessages, refreshSessions]);
+    // A different book has its own server-seeded chats (X-Book-Id scopes the
+    // fetch); pull them in, then refresh the sidebar to show them.
+    hydrateSeeds().then(refreshSessions);
+  }, [selectedBook, clearMessages, refreshSessions, hydrateSeeds]);
 
   // Client-side storage mode: persist the live transcript to localStorage and
   // keep the sidebar in sync. No-op in DB mode (the backend owns history there).
@@ -394,6 +449,7 @@ export default function Home() {
           onStop={handleStop}
           streaming={thinking}
           disabled={thinking}
+          hasApiKey={hasKey}
           tokensUsed={usage.total}
           draftKey={activeId}
         />

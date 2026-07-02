@@ -28,6 +28,14 @@
   --negative: #dc2626;
   --warning: #b45309;
 
+  /* Chart series palette — emerald-led, finance-friendly. Used by ChartBlock. */
+  --chart-1: #047857;
+  --chart-2: #2563eb;
+  --chart-3: #d97706;
+  --chart-4: #7c3aed;
+  --chart-5: #db2777;
+  --chart-6: #0891b2;
+
   /* Shadows */
   --shadow-sm: 0 1px 2px rgba(15, 22, 35, 0.06);
   --shadow-md: 0 4px 14px rgba(15, 22, 35, 0.08);
@@ -61,6 +69,14 @@
   --positive: #34d399;
   --negative: #f87171;
   --warning: #fbbf24;
+
+  /* Chart series palette — brighter for dark surfaces. */
+  --chart-1: #34d399;
+  --chart-2: #60a5fa;
+  --chart-3: #fbbf24;
+  --chart-4: #a78bfa;
+  --chart-5: #f472b6;
+  --chart-6: #22d3ee;
 
   /* Shadows */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);

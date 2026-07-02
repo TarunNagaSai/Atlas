@@ -11,6 +11,8 @@ import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { formatBytes } from "@/lib/attachments";
 import { renderMarkdown } from "@/lib/markdown";
+import { parseAnswerSegments, stripChartBlocks } from "@/lib/chart";
+import { ChartBlock } from "./chart-block";
 import { ThinkingSteps } from "./thinking-steps";
 import type { Citation, Message, MessageAttachment } from "@/types";
 
@@ -34,6 +36,19 @@ export function MessageBubble({ message }: { message: Message }) {
         {attachments.length > 0 && (
           <div className="flex max-w-[80%] flex-wrap justify-end gap-1.5">
             {attachments.map((a, i) => {
+              // An image with a renderable source (a seeded demo chat) shows the
+              // picture inline; everything else stays a compact metadata chip.
+              if (a.kind === "image" && a.src) {
+                return (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    key={`${a.name}-${i}`}
+                    src={a.src}
+                    alt={a.name}
+                    className="max-h-72 max-w-[80%] rounded-xl border border-[var(--border)] object-contain"
+                  />
+                );
+              }
               const { Icon, className } = ATTACHMENT_ICON[a.kind];
               return (
                 <div
@@ -65,11 +80,12 @@ export function MessageBubble({ message }: { message: Message }) {
     );
   }
 
-  // Render markdown (+ math) and pull out any inline [Source: …] tags so they
-  // become numbered chips and feed the Sources list below.
-  const { html } = message.pending
-    ? { html: "" }
-    : renderMarkdown(message.content);
+  // Split the answer into ordered prose / chart segments. Each ```chart block the
+  // agent wrote becomes a rendered <ChartBlock> in place; the surrounding prose is
+  // rendered as markdown (with math + [Source: …] citation chips) as before.
+  const segments = message.pending
+    ? []
+    : parseAnswerSegments(message.content);
 
   const thinking = message.thinking ?? [];
   const hasThinking = thinking.length > 0;
@@ -97,18 +113,33 @@ export function MessageBubble({ message }: { message: Message }) {
           // fall back to the typing dots only before any step has streamed.
           hasThinking ? null : <TypingIndicator />
         ) : (
-          <div
-            className="markdown"
-            // markdown-it output is sanitised (no HTML input from users)
-            dangerouslySetInnerHTML={{ __html: html }}
-          />
+          segments.map((seg, i) => {
+            if (seg.kind === "chart") return <ChartBlock key={i} spec={seg.spec} />;
+            if (seg.kind === "chart-pending") return <ChartPlaceholder key={i} />;
+            if (seg.kind === "chart-invalid")
+              return (
+                <p key={i} className="my-2 text-xs italic text-[var(--subtle)]">
+                  A chart couldn&apos;t be rendered.
+                </p>
+              );
+            return (
+              <div
+                key={i}
+                className="markdown"
+                // markdown-it output is sanitised (no HTML input from users)
+                dangerouslySetInnerHTML={{ __html: renderMarkdown(seg.text).html }}
+              />
+            );
+          })
         )}
 
         {!message.pending && (
           <div className="mt-2 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
             <button
               type="button"
-              onClick={() => navigator.clipboard?.writeText(message.content)}
+              onClick={() =>
+                navigator.clipboard?.writeText(stripChartBlocks(message.content))
+              }
               className="flex items-center gap-1 rounded-md px-1.5 py-1 text-xs text-[var(--subtle)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
             >
               <Copy className="h-3.5 w-3.5" />
@@ -188,6 +219,15 @@ function SourcesPopover({ citations }: { citations: Citation[] }) {
           </ul>
         </div>
       )}
+    </div>
+  );
+}
+
+/** Shown while a ```chart block is still streaming in (fence opened, not closed). */
+function ChartPlaceholder() {
+  return (
+    <div className="my-3 flex h-[280px] w-full animate-pulse items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+      <span className="text-xs text-[var(--subtle)]">Building chart…</span>
     </div>
   );
 }

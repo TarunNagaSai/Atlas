@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { track } from "@vercel/analytics";
 import {
   BarChart3,
@@ -12,7 +12,7 @@ import {
   TrendingUp,
   Users,
 } from "lucide-react";
-import { fetchBooks } from "@/lib/api";
+import { useBooks } from "@/lib/books";
 
 const defaultSuggestions = [
   {
@@ -100,24 +100,14 @@ export function EmptyState({
   onPick: (prompt: string) => void;
   selectedBook?: string | null;
 }) {
-  const [suggestions, setSuggestions] = useState(defaultSuggestions);
+  const { books } = useBooks();
 
-  useEffect(() => {
-    if (!selectedBook) {
-      setSuggestions(defaultSuggestions);
-      return;
-    }
-    const ctrl = new AbortController();
-    fetchBooks({ signal: ctrl.signal })
-      .then((books) => {
-        const index = books.findIndex((b) => b.book_id === selectedBook);
-        setSuggestions(
-          index === 0 ? jioSuggestions : index === 1 ? jpMorganSuggestions : defaultSuggestions
-        );
-      })
-      .catch(() => setSuggestions(defaultSuggestions));
-    return () => ctrl.abort();
-  }, [selectedBook]);
+  // Pick notebook-specific suggestions from the shared books list (no fetch).
+  const suggestions = useMemo(() => {
+    if (!selectedBook) return defaultSuggestions;
+    const index = books.findIndex((b) => b.book_id === selectedBook);
+    return index === 0 ? jioSuggestions : index === 1 ? jpMorganSuggestions : defaultSuggestions;
+  }, [books, selectedBook]);
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center py-16 text-center">

@@ -17,6 +17,11 @@ import { isBrowser } from "@/lib/utils";
 
 const CHAT_PREFIX = "atlas.chat.";
 const INDEX_KEY = "atlas.chats.index";
+// Ids of DB-seeded conversations already pulled into localStorage. Seeding is a
+// one-time hydrate per id: this set is what makes it one-time, so a seed the
+// visitor later deletes locally isn't re-added on the next load, and a revisit
+// doesn't re-fetch what's already here.
+const SEEDED_KEY = "atlas.seeded.ids";
 
 /** One conversation in the local sidebar index. */
 export interface LocalChatMeta {
@@ -37,6 +42,34 @@ export function listLocalChats(): LocalChatMeta[] {
       : [];
   } catch {
     return [];
+  }
+}
+
+/** True once this conversation id has been hydrated from the DB seed source. */
+export function isSeeded(id: string): boolean {
+  if (!isBrowser() || !id) return false;
+  try {
+    const raw = localStorage.getItem(SEEDED_KEY);
+    const ids = raw ? (JSON.parse(raw) as string[]) : [];
+    return Array.isArray(ids) && ids.includes(id);
+  } catch {
+    return false;
+  }
+}
+
+/** Record that a conversation id has been seeded, so it's never re-hydrated. */
+export function markSeeded(id: string): void {
+  if (!isBrowser() || !id) return;
+  try {
+    const raw = localStorage.getItem(SEEDED_KEY);
+    const ids = raw ? (JSON.parse(raw) as string[]) : [];
+    const set = Array.isArray(ids) ? ids : [];
+    if (!set.includes(id)) {
+      set.push(id);
+      localStorage.setItem(SEEDED_KEY, JSON.stringify(set));
+    }
+  } catch {
+    // localStorage unavailable — worst case the seed is re-pulled next load.
   }
 }
 
