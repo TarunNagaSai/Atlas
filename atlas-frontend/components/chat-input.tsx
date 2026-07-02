@@ -412,11 +412,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
             </div>
           </div>
         </div>
-
-        <p className="mt-2 text-center text-xs text-[var(--subtle)]">
-          Atlas grounds answers in your sources. Verify figures before relying
-          on them.
-        </p>
       </div>
     </div>
   );
