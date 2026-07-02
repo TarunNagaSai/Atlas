@@ -5,37 +5,11 @@ import { track } from "@vercel/analytics";
 import {
   BarChart3,
   Building2,
-  FileSearch,
   Landmark,
-  ScrollText,
-  ShieldAlert,
   TrendingUp,
   Users,
 } from "lucide-react";
 import { useBooks } from "@/lib/books";
-
-const defaultSuggestions = [
-  {
-    icon: BarChart3,
-    title: "Summarize Q3 earnings",
-    prompt: "Summarize the key takeaways from the Q3 earnings report.",
-  },
-  {
-    icon: ShieldAlert,
-    title: "Surface risk factors",
-    prompt: "What are the most significant risk factors disclosed this year?",
-  },
-  {
-    icon: ScrollText,
-    title: "Extract covenants",
-    prompt: "List all financial covenants in the credit agreement.",
-  },
-  {
-    icon: FileSearch,
-    title: "Compare segments",
-    prompt: "Compare revenue growth across business segments year over year.",
-  },
-];
 
 // Notebook-specific suggestions for the demo books. Indexes mirror the
 // ordering baked into BookPicker's source labels (0 = Jio DRHP, 1 = JPMorgan).
@@ -104,9 +78,9 @@ export function EmptyState({
 
   // Pick notebook-specific suggestions from the shared books list (no fetch).
   const suggestions = useMemo(() => {
-    if (!selectedBook) return defaultSuggestions;
+    if (!selectedBook) return jioSuggestions;
     const index = books.findIndex((b) => b.book_id === selectedBook);
-    return index === 0 ? jioSuggestions : index === 1 ? jpMorganSuggestions : defaultSuggestions;
+    return index === 1 ? jpMorganSuggestions : jioSuggestions;
   }, [books, selectedBook]);
 
   return (
