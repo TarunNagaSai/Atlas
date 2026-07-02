@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { X, Layers, Cpu, User } from "lucide-react";
 import { track } from "@vercel/analytics";
 import { cn } from "@/lib/utils";
@@ -18,8 +18,15 @@ interface AboutModalProps {
 
 export function AboutModal({ open, onClose }: AboutModalProps) {
   const [tab, setTab] = useState<Tab>("Overview");
+  const bodyRef = useRef<HTMLDivElement>(null);
 
   if (!open) return null;
+
+  const selectTab = (t: Tab) => {
+    track("about_tab_viewed", { tab: t });
+    setTab(t);
+    if (bodyRef.current) bodyRef.current.scrollTop = 0;
+  };
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
@@ -52,7 +59,7 @@ export function AboutModal({ open, onClose }: AboutModalProps) {
             <button
               key={t}
               type="button"
-              onClick={() => { track("about_tab_viewed", { tab: t }); setTab(t); }}
+              onClick={() => selectTab(t)}
               className={cn(
                 "flex items-center gap-1.5 rounded-t-md px-3 pb-2.5 pt-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-ring)]",
                 tab === t
@@ -73,7 +80,7 @@ export function AboutModal({ open, onClose }: AboutModalProps) {
         </div>
 
         {/* Body */}
-        <div className="max-h-[60vh] overflow-y-auto px-5 py-4">
+        <div ref={bodyRef} className="max-h-[60vh] overflow-y-auto px-5 py-4">
           {tab === "Overview" ? (
             <OverviewTab />
           ) : tab === "Tech Stack" ? (

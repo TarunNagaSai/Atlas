@@ -198,6 +198,10 @@ export default function Home() {
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<ChatInputHandle>(null);
+  // Set when the thread is *replaced* (chat switch / new chat) rather than
+  // *appended to* (a live turn). Tells the scroll effect to jump to the start of
+  // the conversation instead of following it to the bottom.
+  const wantTopRef = useRef(false);
   // The conversation the user most recently asked to view — used to drop a
   // replay response if they've clicked elsewhere before it arrived.
   const selectedIdRef = useRef<string | null>(null);
@@ -347,7 +351,21 @@ export default function Home() {
     // Desktop scrolls the inner container; mobile scrolls the document itself
     // (so the browser chrome can collapse). Pick whichever is the live scroller.
     const el = scrollRef.current;
-    if (el && el.scrollHeight > el.clientHeight + 1) {
+    const scrollable = !!el && el.scrollHeight > el.clientHeight + 1;
+
+    // A chat switch / new chat: land at the beginning of the conversation rather
+    // than following it to the tail. Jump instantly (no smooth) so there's no
+    // flash of the previous chat's scroll position. In DB mode the thread loads
+    // in two phases (empty → fetched); keep wanting the top until the fetch
+    // settles (chatLoading flips false) so the populated load lands at the top too.
+    if (wantTopRef.current) {
+      if (scrollable) el.scrollTo({ top: 0 });
+      else window.scrollTo({ top: 0 });
+      if (!chatLoading) wantTopRef.current = false;
+      return;
+    }
+
+    if (scrollable) {
       el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
     } else {
       window.scrollTo({
@@ -355,7 +373,7 @@ export default function Home() {
         behavior: "smooth",
       });
     }
-  }, [messages]);
+  }, [messages, chatLoading]);
 
   // The knowledge panel is inline on desktop (open by default) but an overlay
   // drawer on mobile (closed by default). Open it when we cross up into the
@@ -383,6 +401,7 @@ export default function Home() {
     // listed in the sidebar, represented by the pinned "New analysis" row — until
     // its first turn is persisted.
     selectedIdRef.current = null;
+    wantTopRef.current = true;
     setActiveId(crypto.randomUUID());
     clearMessages();
   };
@@ -391,6 +410,7 @@ export default function Home() {
     if (id === activeId) return;
     track("existing_chat_opened");
     selectedIdRef.current = id;
+    wantTopRef.current = true;
     setActiveId(id);
     // Client mode replays from localStorage (synchronous, no backend call);
     // DB mode fetches the persisted conversation from the server.
