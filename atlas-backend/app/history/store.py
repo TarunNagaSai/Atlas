@@ -34,6 +34,25 @@ from app.schema.llm_settings import Settings, get_settings
 # not one per token.
 _STREAMED = {"plan", "thought", "text"}
 
+# The ``chat_steps.type`` CHECK constraint only permits this set — ``plan`` and
+# ``sources`` are NOT allowed as column values. The replay UI reads a step's true
+# kind from the payload JSON (get_conversation returns the payload, not the
+# column), so we keep the real type inside the payload and give the constrained
+# column an allowed stand-in. Mirrors scripts/import_local_chat.py so native
+# db-mode writes and seeded rows land identically. Without this, any turn with a
+# ``plan`` step (i.e. almost every turn) violates the constraint and record_turn
+# rolls the whole turn back — nothing persists.
+_ALLOWED_STEP_TYPES = {"thought", "text", "tool_call", "tool_result", "usage"}
+_COL_TYPE_FALLBACK = {"plan": "thought", "sources": "text"}
+
+
+def _col_type(step_type: str) -> str:
+    """The value to write to the constrained ``chat_steps.type`` column for a
+    step whose true kind is ``step_type`` (unchanged when already allowed)."""
+    if step_type in _ALLOWED_STEP_TYPES:
+        return step_type
+    return _COL_TYPE_FALLBACK.get(step_type, "thought")
+
 
 def coalesce_steps(events: list[AgentEvent]) -> list[dict[str, Any]]:
     """Turn the raw agent event stream into ordered step records.
@@ -151,7 +170,9 @@ class ChatHistoryStore:
                                 session_id,
                                 turn_id,
                                 seq,
-                                step["type"],
+                                # Constrained column gets an allowed stand-in; the
+                                # true kind stays in the payload for the replay UI.
+                                _col_type(step["type"]),
                                 json.dumps(step["payload"]),
                             )
                             for seq, step in enumerate(steps)
