@@ -97,6 +97,7 @@ export function DeveloperTab() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label={label}
+              onClick={() => track("social_link_clicked", { platform: label })}
               className="flex h-9 w-9 items-center justify-center rounded-lg text-[var(--subtle)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
             >
               <Icon className="h-5 w-5" />
