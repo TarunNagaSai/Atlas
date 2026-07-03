@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import {
   AlertTriangle,
+  ArrowRight,
   BookOpen,
   Check,
   Eye,
@@ -10,6 +11,7 @@ import {
   KeyRound,
   Loader2,
   RotateCw,
+  Sparkles,
   TrendingUp,
   User,
 } from "lucide-react";
@@ -36,6 +38,10 @@ export function BookPicker({ step, keyInvalid = false, onConfirmBook, onSaveKey,
   const [picked, setPicked] = useState<string | null>(null);
   const [name, setName] = useState("");
 
+  // ── Step 0: intro card ────────────────────────────────────────────────────
+  // A welcome/overview screen shown once before notebook selection.
+  const [showIntro, setShowIntro] = useState(true);
+
   // ── Step 2: API key ───────────────────────────────────────────────────────
   const [keyInput, setKeyInput] = useState("");
   const [reveal, setReveal] = useState(false);
@@ -56,6 +62,8 @@ export function BookPicker({ step, keyInvalid = false, onConfirmBook, onSaveKey,
   }, [step]);
 
   if (!step) return null;
+
+  const showIntroCard = step === "book" && showIntro;
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleConfirmBook = () => {
@@ -94,6 +102,7 @@ export function BookPicker({ step, keyInvalid = false, onConfirmBook, onSaveKey,
       <div className="relative z-10 flex w-full max-w-md flex-col rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl">
 
         {/* ── Step indicator ── */}
+        {!showIntroCard && (
         <div className="flex items-center gap-1.5 px-5 pt-4">
           {(["book", "key"] as const).map((s, i) => (
             <div key={s} className="flex items-center gap-1.5">
@@ -115,11 +124,38 @@ export function BookPicker({ step, keyInvalid = false, onConfirmBook, onSaveKey,
             </div>
           ))}
         </div>
+        )}
 
         {brand}
 
+        {/* ── Step 0: intro card ── */}
+        {showIntroCard && (
+          <>
+            <div className="flex flex-col items-center gap-4 px-6 py-8 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--accent-soft)] text-[var(--accent)]">
+                <Sparkles className="h-6 w-6" />
+              </div>
+              <p className="max-w-sm text-sm leading-relaxed text-[var(--muted)]">
+                Atlas is a demo project that showcases accurate data retrieval. Explore
+                the curated notebooks, then start your own chats with the same data.
+              </p>
+            </div>
+
+            <div className="border-t border-[var(--border)] px-5 py-3">
+              <button
+                type="button"
+                onClick={() => setShowIntro(false)}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--accent)] py-2.5 text-sm font-semibold text-[var(--accent-fg)] shadow-[var(--shadow-sm)] transition-all hover:bg-[var(--accent-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-ring)]"
+              >
+                Start demo
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
+          </>
+        )}
+
         {/* ── Step 1: book + name ── */}
-        {step === "book" && (
+        {step === "book" && !showIntro && (
           <>
             <div className="max-h-[60vh] overflow-y-auto px-5 py-4 space-y-4">
               {/* Name */}
