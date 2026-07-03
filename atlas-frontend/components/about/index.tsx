@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { X, Layers, Cpu, User } from "lucide-react";
-import { track } from "@vercel/analytics";
+import { track } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import { OverviewTab } from "./overview-tab";
 import { StackTab } from "./stack-tab";

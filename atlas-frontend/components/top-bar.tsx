@@ -1,7 +1,7 @@
 "use client";
 
 import { Menu, PanelRight } from "lucide-react";
-import { track } from "@vercel/analytics";
+import { track } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 
 interface TopBarProps {

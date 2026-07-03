@@ -13,7 +13,7 @@ import {
   TrendingUp,
   User,
 } from "lucide-react";
-import { track } from "@vercel/analytics";
+import { track } from "@/lib/analytics";
 import { useBooks } from "@/lib/books";
 import { validateGeminiKey } from "@/lib/validate-gemini-key";
 

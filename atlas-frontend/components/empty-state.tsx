@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { track } from "@vercel/analytics";
+import { track } from "@/lib/analytics";
 import {
   BarChart3,
   Building2,

@@ -1,6 +1,6 @@
 "use client";
 
-import { track } from "@vercel/analytics";
+import { track } from "@/lib/analytics";
 import { Github, Globe, Linkedin } from "lucide-react";
 
 const STATS = [

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Download, FileText, Database, Github, ChevronDown, ChevronUp, Wrench } from "lucide-react";
-import { track } from "@vercel/analytics";
+import { track } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import type { AgentStep } from "@/types";
 import { AboutModal } from "./about-modal";

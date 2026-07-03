@@ -31,7 +31,7 @@ import {
 import { hydrateStaticSeeds } from "@/lib/seeds";
 import { useConversationUsage, useSession } from "@/lib/session";
 import type { AgentStep, ChatSession, Message, ThinkingStep } from "@/types";
-import { track } from "@vercel/analytics";
+import { track } from "@/lib/analytics";
 
 /** Map a persisted conversation's turns into the flat Message list the thread renders. */
 function turnsToMessages(turns: ConversationTurn[]): Message[] {

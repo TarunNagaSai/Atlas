@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { track } from "@vercel/analytics";
+import { track } from "@/lib/analytics";
 import {
   AttachmentError,
   cancelChat,

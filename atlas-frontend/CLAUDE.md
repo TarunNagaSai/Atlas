@@ -143,5 +143,8 @@ crossing, leaving manual toggles intact between them.
 - UI types in `types/index.ts`; API wire types in `lib/models/` (re-exported via `lib/api.ts`).
 - CSS custom properties for theming: `var(--background)`, `var(--surface-2)`, etc.
 - `@/` path alias for imports from the project root.
-- Vercel Analytics is instrumented at key user events (`track("message_sent")`,
-  `track("generation_stopped")`).
+- Firebase Analytics is instrumented at key user events via `track(name, params?)`
+  from `lib/analytics.ts` (`track("message_sent")`, `track("generation_stopped")`).
+  `track` is a no-op when the `NEXT_PUBLIC_FIREBASE_*` env vars are unset or the
+  browser doesn't support Analytics. `<FirebaseAnalytics />` in `app/layout.tsx`
+  initialises Firebase on mount (firing the automatic `page_view`).
