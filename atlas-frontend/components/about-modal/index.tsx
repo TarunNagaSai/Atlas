@@ -1,1 +1,1 @@
-export { AboutModal } from "./about";
+export { AboutModal } from "@/components/about";

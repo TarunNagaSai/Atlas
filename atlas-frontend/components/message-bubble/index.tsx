@@ -12,8 +12,8 @@ import { cn } from "@/lib/utils";
 import { formatBytes } from "@/lib/attachments";
 import { renderMarkdown } from "@/lib/markdown";
 import { parseAnswerSegments, stripChartBlocks } from "@/lib/chart";
-import { ChartBlock } from "./chart-block";
-import { ThinkingSteps } from "./thinking-steps";
+import { ChartBlock } from "@/components/chart-block";
+import { ThinkingSteps } from "@/components/thinking-steps";
 import type { Citation, Message, MessageAttachment } from "@/types";
 
 const ATTACHMENT_ICON: Record<

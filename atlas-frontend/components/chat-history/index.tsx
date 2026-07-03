@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { MessageSquare, Plus, Settings, TrendingUp, X } from "lucide-react";
-import { SettingsModal } from "./settings-modal";
+import { SettingsModal } from "@/components/settings-modal";
 import { DAY_MS } from "@/lib/settings";
 
 function useTheme() {
