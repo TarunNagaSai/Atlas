@@ -1,8 +1,30 @@
-# Atlas
+<div align="center">
 
-A **financial RAG assistant over Google Gemini**. Upload financial documents (PDF /
-DOCX / text), turn them into embeddings in a pgvector store, and ask questions answered
-by a streaming ReAct agent — with grounding citations surfaced in the UI.
+# 📈 Atlas
+
+### AI-Powered Financial Research Agent
+
+**Turn dense financial filings into grounded, cited answers.**
+Upload annual reports, 10-Ks, and contracts — then chat with a streaming ReAct agent that
+retrieves the exact passages, reasons over them, and answers with citations you can trust.
+
+<em>AI Powered. Financially Ahead.</em>
+
+</div>
+
+<div align="center">
+
+![Atlas app — chat interface with knowledge base and grounded answers](./assets/app-screenshot.png)
+
+</div>
+
+---
+
+## What is Atlas?
+
+Atlas is a **financial RAG assistant over Google Gemini**. Upload financial documents (PDF /
+DOCX / text), turn them into embeddings in a pgvector store, and ask questions answered by a
+streaming ReAct agent — with grounding citations surfaced live in the UI.
 
 The project is a monorepo with two halves:
 
@@ -10,6 +32,29 @@ The project is a monorepo with two halves:
 | --- | --- | --- |
 | [`atlas-backend`](./atlas-backend) | FastAPI · Python ≥3.12 · pgvector · Gemini | Document ingestion (load → chunk → embed → store) and a streaming ReAct query agent |
 | [`atlas-frontend`](./atlas-frontend) | Next.js 16 · React 19 · Tailwind 4 · TypeScript | Chat UI that streams answers, shows citations, and uploads documents into the knowledge base |
+
+## Why Atlas — the numbers
+
+Wrapping a base model in Atlas's agentic retrieval loop measurably improves accuracy and
+reliability. Across the Gemini model family, Atlas grounds more answers, hallucinates fewer
+figures, and correctly refuses out-of-scope questions instead of guessing.
+
+<div align="center">
+
+![Performance comparison — Base Models vs. Atlas: +22% overall pass, +34% correct refusals, +35% grounded answers](./assets/performance-comparison.png)
+
+</div>
+
+| Dimension | Base | Atlas | Δ |
+| --- | :---: | :---: | :---: |
+| **overall_pass** | 63% | **85%** | 🟢 +22% |
+| **grounded_answers** | 63% | **97%** | 🟢 +34% |
+| **correct_refusals** | 0% | **67%** | 🟢 +67% |
+| **no_hallucinated_figures** | 77% | **98%** | 🟢 +21% |
+| **clean_output** | 100% | 98% | ≈ |
+| **answered_in_scope** | 100% | 100% | ≈ |
+
+<sub>Results based on an evaluation of Base Models vs. Atlas (powered by agentic AI) using the Gemini model family.</sub>
 
 ## Architecture at a glance
 
@@ -40,7 +85,7 @@ The project is a monorepo with two halves:
 
 ## Features
 
-### Ingestion & Retrieval
+### 🔎 Ingestion & Retrieval
 
 - **Column-aware PDF extraction** — detects two-column layouts and crops each column so text is not interleaved across columns.
 - **Page-as-parent chunking** — each page becomes one parent document; overlapping sentence-window children are indexed for retrieval and swapped back for the full parent text at generation time.
@@ -49,7 +94,7 @@ The project is a monorepo with two halves:
 - **Idempotent ingestion** — chunks are content-hashed (`Chunk.make_id`), so re-ingesting the same document is a no-op (`ON CONFLICT DO NOTHING`).
 - **Dry-run preview** — upload without `persist=true` to validate the pipeline (load → chunk → embed a sample) without touching the database.
 
-### Agent & Tools
+### 🤖 Agent & Tools
 
 - **Streaming ReAct agent** — a Gemini-native function-calling loop that emits a structured `AgentStep` (thought / action / action\_input / final\_answer) on each turn, streamed as Server-Sent Events.
 - **Retrieve tool** — the agent calls `retrieve` to run a hybrid search over the pgvector store and receives top-ranked parent-page passages with citations, grounding its answer in real figures.
@@ -61,7 +106,7 @@ The project is a monorepo with two halves:
   - Images and PDFs are sent to Gemini as native `inline_data` parts (the model sees charts, scanned pages, layout).
   - DOCX and XLSX files have their text/tables extracted and sent as a plain-text part.
 
-### Chat & History
+### 💬 Chat & History
 
 - **Postgres-backed chat history** — every conversation is persisted across three tables (`chats`, `chat_steps`). Turns group a user prompt, the agent's reasoning trace, and the final assistant reply under a shared `turn_id`.
 - **Dual storage modes** — controlled by `NEXT_PUBLIC_CHAT_STORAGE` / `X-Chat-Storage`:
@@ -70,7 +115,7 @@ The project is a monorepo with two halves:
 - **Session management API** — `GET /chat/sessions` lists all conversations; `GET /chat/sessions/{id}` replays a full conversation with its reasoning trace.
 - **Visitor API key** — visitors can supply their own Gemini API key via the UI (stored in `sessionStorage`, sent as `X-Gemini-Api-Key`). The backend substitutes it for the server key on that request.
 
-### Frontend UI
+### 🖥️ Frontend UI
 
 - **Streaming chat** — answers appear token-by-token via SSE; a cancel button stops generation mid-stream.
 - **Thinking steps panel** — collapsible trace of the agent's reasoning (thoughts, tool calls, tool results) shown alongside each assistant reply.
@@ -83,7 +128,7 @@ The project is a monorepo with two halves:
 - **About modal** — tabbed panel with an overview, the full tech stack, and developer info.
 - **Markdown rendering** — assistant answers are rendered as rich markdown (headings, tables, code blocks) via `markdown-it`.
 
-### Observability
+### 📊 Observability
 
 - **Langfuse** — LLM traces (spans, generations, tool calls, scores) sent to the Langfuse platform. Always-on; self-configured from `LANGFUSE_*` env vars.
 - **Logfire** — structured instrumentation for every FastAPI request/response, Pydantic validation, psycopg2 DB query, and outbound HTTP call (Gemini API). Python `logging` is routed into the same trace stream. Console fallback when `LOGFIRE_TOKEN` is absent.
@@ -131,3 +176,32 @@ The UI defaults to `http://localhost:8000`; override with `NEXT_PUBLIC_API_URL` 
 - The `retrieve` tool and `graph_search` tool are both wired into the agent.
 - GraphRAG (`app/rag/graph.py`) is implemented; the `graph_search` tool exposes it to the agent.
 - Schema changes (new tables, indexes) go through the **Supabase MCP `apply_migration`**, not ad-hoc SQL.
+
+## Tech Stack
+
+<div align="center">
+
+| Layer | Technologies |
+| --- | --- |
+| **Frontend** | ![Next.js](https://img.shields.io/badge/Next.js_16-000000?style=flat&logo=next.js&logoColor=white) ![React](https://img.shields.io/badge/React_19-20232A?style=flat&logo=react&logoColor=61DAFB) ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white) ![Tailwind](https://img.shields.io/badge/Tailwind_4-06B6D4?style=flat&logo=tailwindcss&logoColor=white) |
+| **Backend** | ![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat&logo=fastapi&logoColor=white) ![Python](https://img.shields.io/badge/Python_≥3.12-3776AB?style=flat&logo=python&logoColor=white) ![Pydantic](https://img.shields.io/badge/Pydantic-E92063?style=flat&logo=pydantic&logoColor=white) ![uv](https://img.shields.io/badge/uv-DE5FE9?style=flat&logo=uv&logoColor=white) |
+| **AI / RAG** | ![Gemini](https://img.shields.io/badge/Google_Gemini-8E75B2?style=flat&logo=googlegemini&logoColor=white) ![ReAct Agent](https://img.shields.io/badge/ReAct_Agent-4B8BBE?style=flat) ![GraphRAG](https://img.shields.io/badge/GraphRAG-FF6F00?style=flat) ![NetworkX](https://img.shields.io/badge/NetworkX-2C5BB4?style=flat) |
+| **Data** | ![Postgres](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat&logo=postgresql&logoColor=white) ![pgvector](https://img.shields.io/badge/pgvector-4169E1?style=flat&logo=postgresql&logoColor=white) ![Supabase](https://img.shields.io/badge/Supabase-3FCF8E?style=flat&logo=supabase&logoColor=white) |
+| **Observability** | ![Langfuse](https://img.shields.io/badge/Langfuse-0A0A0A?style=flat) ![Logfire](https://img.shields.io/badge/Logfire-FF4785?style=flat) |
+| **Transport** | ![SSE](https://img.shields.io/badge/Server--Sent_Events-F7DF1E?style=flat&logoColor=black) ![REST](https://img.shields.io/badge/REST_API-005571?style=flat) |
+
+</div>
+
+**Core building blocks**
+
+- **Ingestion** — column-aware PDF extraction · page-as-parent + semantic chunking · content-hashed idempotent writes
+- **Retrieval** — `HybridStore` (dense cosine + Postgres FTS, RRF-fused) over pgvector with an HNSW index
+- **Reasoning** — Gemini-native function-calling ReAct loop · `retrieve` + `graph_search` tools · cooperative SSE cancellation
+- **Knowledge graph** — Gemini entity–relation extraction · `networkx` graph · community detection + summarised embeddings
+- **Delivery** — token-by-token SSE streaming · multimodal attachments (image / PDF / DOCX / XLSX) · dual DB/client storage
+
+---
+
+<div align="center">
+<sub>Built with ⚡ by <strong>Tarun NagaSai</strong> · Atlas — AI Powered. Financially Ahead.</sub>
+</div>
