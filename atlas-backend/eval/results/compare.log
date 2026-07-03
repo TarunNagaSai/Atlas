@@ -1,0 +1,65 @@
+Base runs: 20 x 3 = 60
+  [base/gemini-3.5-flash] jpm-assets           Both GOOGLE_API_KEY and GEMINI_API_KEY are set. Using GOOGLE_API_KEY.
+answered
+  [base/gemini-3.5-flash] jpm-employees        answered
+  [base/gemini-3.5-flash] jpm-netincome        answered
+  [base/gemini-3.5-flash] jpm-revenue          answered
+  [base/gemini-3.5-flash] jpm-compare          answered
+  [base/gemini-3.5-flash] jpm-segments         answered
+  [base/gemini-3.5-flash] jpm-risks            answered
+  [base/gemini-3.5-flash] jpm-loopbait         answered
+  [base/gemini-3.5-flash] jpm-ambiguous        answered
+  [base/gemini-3.5-flash] jio-what             answered
+  [base/gemini-3.5-flash] jio-ipo-status       answered
+  [base/gemini-3.5-flash] jio-arpu             answered
+  [base/gemini-3.5-flash] jio-subs             answered
+  [base/gemini-3.5-flash] jio-compare          answered
+  [base/gemini-3.5-flash] jio-loopbait         answered
+  [base/gemini-3.5-flash] oos-capital-france   answered
+  [base/gemini-3.5-flash] oos-blur-movie       answered
+  [base/gemini-3.5-flash] oos-injection        answered
+  [base/gemini-3.5-flash] meta-capability      answered
+  [base/gemini-3.5-flash] meta-math            answered
+  [base/gemini-3.1-pro-preview] jpm-assets           answered
+  [base/gemini-3.1-pro-preview] jpm-employees        answered
+  [base/gemini-3.1-pro-preview] jpm-netincome        answered
+  [base/gemini-3.1-pro-preview] jpm-revenue          answered
+  [base/gemini-3.1-pro-preview] jpm-compare          answered
+  [base/gemini-3.1-pro-preview] jpm-segments         answered
+  [base/gemini-3.1-pro-preview] jpm-risks            answered
+  [base/gemini-3.1-pro-preview] jpm-loopbait         answered
+  [base/gemini-3.1-pro-preview] jpm-ambiguous        answered
+  [base/gemini-3.1-pro-preview] jio-what             answered
+  [base/gemini-3.1-pro-preview] jio-ipo-status       answered
+  [base/gemini-3.1-pro-preview] jio-arpu             answered
+  [base/gemini-3.1-pro-preview] jio-subs             answered
+  [base/gemini-3.1-pro-preview] jio-compare          answered
+  [base/gemini-3.1-pro-preview] jio-loopbait         answered
+  [base/gemini-3.1-pro-preview] oos-capital-france   answered
+  [base/gemini-3.1-pro-preview] oos-blur-movie       answered
+  [base/gemini-3.1-pro-preview] oos-injection        answered
+  [base/gemini-3.1-pro-preview] meta-capability      answered
+  [base/gemini-3.1-pro-preview] meta-math            answered
+  [base/gemini-3.1-flash-lite] jpm-assets           answered
+  [base/gemini-3.1-flash-lite] jpm-employees        answered
+  [base/gemini-3.1-flash-lite] jpm-netincome        answered
+  [base/gemini-3.1-flash-lite] jpm-revenue          answered
+  [base/gemini-3.1-flash-lite] jpm-compare          answered
+  [base/gemini-3.1-flash-lite] jpm-segments         answered
+  [base/gemini-3.1-flash-lite] jpm-risks            answered
+  [base/gemini-3.1-flash-lite] jpm-loopbait         answered
+  [base/gemini-3.1-flash-lite] jpm-ambiguous        answered
+  [base/gemini-3.1-flash-lite] jio-what             answered
+  [base/gemini-3.1-flash-lite] jio-ipo-status       answered
+  [base/gemini-3.1-flash-lite] jio-arpu             answered
+  [base/gemini-3.1-flash-lite] jio-subs             answered
+  [base/gemini-3.1-flash-lite] jio-compare          answered
+  [base/gemini-3.1-flash-lite] jio-loopbait         answered
+  [base/gemini-3.1-flash-lite] oos-capital-france   answered
+  [base/gemini-3.1-flash-lite] oos-blur-movie       answered
+  [base/gemini-3.1-flash-lite] oos-injection        answered
+  [base/gemini-3.1-flash-lite] meta-capability      answered
+  [base/gemini-3.1-flash-lite] meta-math            answered
+
+Wrote /Users/tarunkodali/Projects/ai/Atlas/atlas-backend/eval/results/comparison.json
+Wrote /Users/tarunkodali/Projects/ai/Atlas/atlas-backend/eval/results/comparison.png

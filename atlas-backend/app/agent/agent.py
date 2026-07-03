@@ -95,6 +95,60 @@ _EVICTED_RESULT_STUB = (
     "rely on the passages retrieved more recently in this conversation.]"
 )
 
+# The canonical scope-refusal (must match react_prompt.txt verbatim, lowered).
+_REFUSAL_PREFIX = "i can only answer questions about the financial data"
+
+# Reasoning that sometimes leaks into the visible answer channel — a weak/low-
+# thinking model narrating its plan or self-correcting out loud ("Wait, …",
+# "Plan:", "I must …") instead of keeping it in the thought channel. The prompt
+# forbids these openers; this is the deterministic backstop for when a model
+# ignores it anyway (same prompt-intent-plus-guard pattern as the loop breakers).
+_LEAK_OPENERS = (
+    "plan:", "step 1", "wait,", "let me ", "let's ", "first i will", "first, i",
+    "to answer this", "i will now", "i need to ", "i must ", "i will use",
+    "i will output", "i will search", "i will retrieve", "i should ",
+)
+_NEVER_BLANK = (
+    "Sorry — I wasn't able to produce an answer for that. Could you rephrase or "
+    "narrow the question?"
+)
+
+
+def _opens_leaky(text: str) -> bool:
+    head = text.lstrip("*# -\n0123456789.").lower()
+    return text.lstrip().lower().startswith(("plan:", "1.", "2.")) or any(
+        head.startswith(m) for m in _LEAK_OPENERS
+    )
+
+
+def _clean_answer(answer: str) -> str:
+    """Strip a leaked reasoning preamble from the final answer, conservatively.
+
+    Two safe transforms, both no-ops on a well-formed answer:
+      1. Refusal extraction — if the canonical refusal sentence appears after some
+         leaked preamble ("Plan: 1. Decline… I can only answer…"), return it from
+         the refusal onward. The refusal is a fixed known string, so this is exact.
+      2. Preamble strip — if the answer opens with a leak marker, drop the leading
+         blank-line-separated blocks that are pure leaked reasoning, keeping from
+         the first real block. Only applied when it leaves substantial content
+         (>=40 chars); otherwise the original is returned untouched, so we never
+         blank out or mangle an answer we can't cleanly separate.
+    """
+    a = answer.strip()
+    if not a:
+        return a
+    idx = a.lower().find(_REFUSAL_PREFIX)
+    if idx > 0:
+        return a[idx:].strip()
+    if _opens_leaky(a):
+        blocks = re.split(r"\n\s*\n", a)
+        while blocks and _opens_leaky(blocks[0]):
+            blocks.pop(0)
+        cleaned = "\n\n".join(blocks).strip()
+        if len(cleaned) >= 40:
+            return cleaned
+    return a
+
 
 def _compact_old_tool_results(
     contents: list[types.Content], keep_recent: int
@@ -321,6 +375,12 @@ async def run_agent(
         # against. ``force_next`` carries that decision into the next turn.
         seen_queries: set[str] = set()
         force_next = False
+        # A weak model sometimes ends a turn empty — no tool call and no answer
+        # text (an empty candidate) — which would otherwise be returned to the
+        # user as a blank message. Retry that exactly once on the force-answer
+        # path (which compels a written answer); the retry can't loop because a
+        # forced turn withholds tools and its own empty end just returns.
+        empty_retry_used = False
         while True:
             hop += 1
             # Outer gate: catches a stop that arrived while the previous turn's
@@ -405,6 +465,24 @@ async def run_agent(
                 # already streamed its answer above — we're done.
                 if tool_call is None:
                     answer = "".join(turn_text)
+                    # Empty terminal turn: the model committed neither a tool call
+                    # nor any answer text. Don't hand the user a blank message —
+                    # retry once forced (tools withheld, force prompt compels an
+                    # answer from whatever context exists). Guarded by a one-shot
+                    # flag so a persistently-empty model still terminates.
+                    if not answer.strip() and not forced and not empty_retry_used:
+                        empty_retry_used = True
+                        force_next = True
+                        logfire.warn("empty terminal turn (hop={hop}); forcing a "
+                                     "retry so the user isn't sent a blank answer",
+                                     hop=hop)
+                        continue
+                    # Deterministic output guard: strip any leaked reasoning
+                    # preamble the prompt told the model not to write, and never
+                    # hand the user a blank message.
+                    answer = _clean_answer(answer)
+                    if not answer.strip() and forced:
+                        answer = _NEVER_BLANK
                     if answer:
                         yield TextEvent(text=answer)
                     turn_obs.update(output=answer)

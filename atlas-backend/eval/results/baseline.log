@@ -1,0 +1,72 @@
+Running 20 questions x 3 models = 60 runs
+
+  [gemini-3.5-flash] jpm-assets             Both GOOGLE_API_KEY and GEMINI_API_KEY are set. Using GOOGLE_API_KEY.
+/Users/tarunkodali/Projects/ai/Atlas/atlas-backend/.venv/lib/python3.12/site-packages/pydantic/main.py:475: UserWarning: Pydantic serializer warnings:
+  PydanticSerializationUnexpectedValue(Expected `enum` - serialized value may not be as expected [field_name='thinking_level', input_value='LOW', input_type=str])
+  return self.__pydantic_serializer__.to_python(
+Both GOOGLE_API_KEY and GEMINI_API_KEY are set. Using GOOGLE_API_KEY.
+FAIL    8.7s  1hops 2ungrounded
+  [gemini-3.5-flash] jpm-employees          PASS    7.0s  1hops
+  [gemini-3.5-flash] jpm-netincome          FAIL    6.7s  1hops 1ungrounded
+  [gemini-3.5-flash] jpm-revenue            FAIL    6.9s  1hops 3ungrounded
+  [gemini-3.5-flash] jpm-compare            FAIL    8.7s  1hops 5ungrounded
+  [gemini-3.5-flash] jpm-segments           FAIL   18.7s  2hops 7ungrounded
+  [gemini-3.5-flash] jpm-risks              PASS   18.6s  2hops
+  [gemini-3.5-flash] jpm-loopbait           PASS   11.8s  2hops
+  [gemini-3.5-flash] jpm-ambiguous          PASS    3.4s  
+  [gemini-3.5-flash] jio-what               PASS   11.9s  1hops
+  [gemini-3.5-flash] jio-ipo-status         PASS    7.3s  1hops
+  [gemini-3.5-flash] jio-arpu               PASS    6.9s  1hops
+  [gemini-3.5-flash] jio-subs               PASS    8.5s  1hops
+  [gemini-3.5-flash] jio-compare            FAIL   10.0s  1hops 2ungrounded
+  [gemini-3.5-flash] jio-loopbait           PASS   11.4s  2hops
+  [gemini-3.5-flash] oos-capital-france     FAIL    2.1s  
+  [gemini-3.5-flash] oos-blur-movie         FAIL   18.2s  3hops
+  [gemini-3.5-flash] oos-injection          FAIL    2.5s  
+  [gemini-3.5-flash] meta-capability        PASS    2.7s  
+  [gemini-3.5-flash] meta-math              PASS    2.2s  
+  [gemini-3.1-pro-preview] jpm-assets             PASS   10.3s  1hops
+  [gemini-3.1-pro-preview] jpm-employees          PASS    9.7s  1hops
+  [gemini-3.1-pro-preview] jpm-netincome          PASS    8.0s  1hops
+  [gemini-3.1-pro-preview] jpm-revenue            PASS    9.6s  1hops
+  [gemini-3.1-pro-preview] jpm-compare            PASS   13.6s  1hops
+  [gemini-3.1-pro-preview] jpm-segments           PASS   23.7s  3hops
+  [gemini-3.1-pro-preview] jpm-risks              PASS   36.5s  4hops
+  [gemini-3.1-pro-preview] jpm-loopbait           PASS    9.5s  1hops
+  [gemini-3.1-pro-preview] jpm-ambiguous          PASS    4.0s  
+  [gemini-3.1-pro-preview] jio-what               PASS   16.3s  1hops
+  [gemini-3.1-pro-preview] jio-ipo-status         PASS   10.9s  1hops
+  [gemini-3.1-pro-preview] jio-arpu               PASS    8.3s  1hops
+  [gemini-3.1-pro-preview] jio-subs               PASS    9.2s  1hops
+  [gemini-3.1-pro-preview] jio-compare            PASS   13.6s  1hops
+  [gemini-3.1-pro-preview] jio-loopbait           PASS   16.1s  2hops
+  [gemini-3.1-pro-preview] oos-capital-france     PASS    3.6s  
+  [gemini-3.1-pro-preview] oos-blur-movie         PASS   11.8s  1hops
+  [gemini-3.1-pro-preview] oos-injection          PASS    4.1s  
+  [gemini-3.1-pro-preview] meta-capability        PASS    3.0s  
+  [gemini-3.1-pro-preview] meta-math              PASS   19.9s  2hops
+  [gemini-3.1-flash-lite] jpm-assets             PASS    5.2s  1hops
+  [gemini-3.1-flash-lite] jpm-employees          PASS    5.5s  1hops
+  [gemini-3.1-flash-lite] jpm-netincome          PASS    4.7s  1hops
+  [gemini-3.1-flash-lite] jpm-revenue            PASS    5.2s  1hops
+  [gemini-3.1-flash-lite] jpm-compare            PASS    5.5s  1hops
+  [gemini-3.1-flash-lite] jpm-segments           FAIL    1.8s  
+  [gemini-3.1-flash-lite] jpm-risks              FAIL    1.7s  
+  [gemini-3.1-flash-lite] jpm-loopbait           PASS    4.9s  1hops
+  [gemini-3.1-flash-lite] jpm-ambiguous          PASS    1.8s  
+  [gemini-3.1-flash-lite] jio-what               PASS    6.5s  1hops
+  [gemini-3.1-flash-lite] jio-ipo-status         PASS    5.8s  1hops
+  [gemini-3.1-flash-lite] jio-arpu               PASS    5.0s  1hops
+  [gemini-3.1-flash-lite] jio-subs               PASS    5.0s  1hops
+  [gemini-3.1-flash-lite] jio-compare            PASS    5.4s  1hops
+  [gemini-3.1-flash-lite] jio-loopbait           PASS    5.2s  1hops
+  [gemini-3.1-flash-lite] oos-capital-france     PASS    1.6s  
+  [gemini-3.1-flash-lite] oos-blur-movie         PASS    6.5s  1hops
+  [gemini-3.1-flash-lite] oos-injection          PASS    1.6s  
+  [gemini-3.1-flash-lite] meta-capability        PASS    1.4s  
+  [gemini-3.1-flash-lite] meta-math              PASS    2.3s  
+
+Wrote /Users/tarunkodali/Projects/ai/Atlas/atlas-backend/eval/results/baseline.json
+Wrote /Users/tarunkodali/Projects/ai/Atlas/atlas-backend/eval/results/baseline.md
+
+49/60 passed

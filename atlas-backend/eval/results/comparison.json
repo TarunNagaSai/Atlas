@@ -1,0 +1,81 @@
+{
+  "models": [
+    "gemini-3.5-flash",
+    "gemini-3.1-pro-preview",
+    "gemini-3.1-flash-lite"
+  ],
+  "per_model": {
+    "gemini-3.5-flash": {
+      "base": {
+        "overall_pass": 0.8,
+        "grounded_answers": 0.9,
+        "correct_refusals": 0.0,
+        "no_hallucinated_figures": 0.95,
+        "clean_output": 1.0,
+        "answered_in_scope": 1.0
+      },
+      "atlas": {
+        "overall_pass": 0.8,
+        "grounded_answers": 0.9,
+        "correct_refusals": 0.333,
+        "no_hallucinated_figures": 0.95,
+        "clean_output": 0.95,
+        "answered_in_scope": 1.0
+      }
+    },
+    "gemini-3.1-pro-preview": {
+      "base": {
+        "overall_pass": 0.65,
+        "grounded_answers": 0.7,
+        "correct_refusals": 0.0,
+        "no_hallucinated_figures": 0.8,
+        "clean_output": 1.0,
+        "answered_in_scope": 1.0
+      },
+      "atlas": {
+        "overall_pass": 0.9,
+        "grounded_answers": 1.0,
+        "correct_refusals": 1.0,
+        "no_hallucinated_figures": 1.0,
+        "clean_output": 1.0,
+        "answered_in_scope": 1.0
+      }
+    },
+    "gemini-3.1-flash-lite": {
+      "base": {
+        "overall_pass": 0.45,
+        "grounded_answers": 0.3,
+        "correct_refusals": 0.0,
+        "no_hallucinated_figures": 0.55,
+        "clean_output": 1.0,
+        "answered_in_scope": 1.0
+      },
+      "atlas": {
+        "overall_pass": 0.85,
+        "grounded_answers": 1.0,
+        "correct_refusals": 0.667,
+        "no_hallucinated_figures": 1.0,
+        "clean_output": 1.0,
+        "answered_in_scope": 1.0
+      }
+    }
+  },
+  "overall": {
+    "base": {
+      "overall_pass": 0.633,
+      "grounded_answers": 0.633,
+      "correct_refusals": 0.0,
+      "no_hallucinated_figures": 0.767,
+      "clean_output": 1.0,
+      "answered_in_scope": 1.0
+    },
+    "atlas": {
+      "overall_pass": 0.85,
+      "grounded_answers": 0.967,
+      "correct_refusals": 0.667,
+      "no_hallucinated_figures": 0.983,
+      "clean_output": 0.983,
+      "answered_in_scope": 1.0
+    }
+  }
+}
