@@ -22,7 +22,7 @@ from google.genai import types
 
 import app.agent.agent as agent
 from app.agent.agent import _FALLBACK_PROMPT, _load_prompt, run_agent
-from app.tools.tools import RETRIEVE_TOOL
+from app.tools import RETRIEVE_TOOL
 
 
 # --------------------------------------------------------------------------- #

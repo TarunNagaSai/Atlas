@@ -21,7 +21,7 @@ from app.schema.agent import (
     UsageEvent,
 )
 from app.schema.llm_settings import ModelSettings
-from app.tools.tools import GRAPH_SEARCH_TOOL, RETRIEVE_TOOL, execute_tool_call
+from app.tools import GRAPH_SEARCH_TOOL, RETRIEVE_TOOL, execute_tool_call
 
 _PROMPTS_DIR = Path(__file__).resolve().parents[1] / "prompts"
 _PROMPT_PATH = _PROMPTS_DIR / "react_prompt.txt"

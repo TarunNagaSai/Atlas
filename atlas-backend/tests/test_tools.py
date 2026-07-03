@@ -1,4 +1,4 @@
-"""Unit tests for the ``retrieve`` tool's output formatting (app/tools/tools.py).
+"""Unit tests for the ``retrieve`` tool's output formatting (app/tools/retrieve.py).
 
 The retrieval/rerank/embedding machinery is stubbed so these tests pin only the
 part that matters for grounding: passages are handed to the agent **numbered**
@@ -9,7 +9,7 @@ a real document in the trace.
 
 from __future__ import annotations
 
-import app.tools.tools as tools
+import app.tools.retrieve as tools
 from app.schema.documents import Chunk, Scored
 
 
