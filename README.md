@@ -58,25 +58,6 @@ figures, and correctly refuses out-of-scope questions instead of guessing.
 
 ## Architecture at a glance
 
-```
-┌─────────────────┐      SSE / multipart      ┌──────────────────────┐
-│  atlas-frontend  │ ───────────────────────▶ │     atlas-backend     │
-│  (Next.js chat)  │                          │       (FastAPI)        │
-│                  │ ◀─────────────────────── │                        │
-└─────────────────┘   streamed answer +       │  ┌──────────────────┐  │
-                       citations              │  │ Ingestion        │  │
-                                              │  │ load→chunk→embed │  │
-                                              │  └────────┬─────────┘  │
-                                              │           ▼            │
-                                              │     pgvector store      │
-                                              │           ▲            │
-                                              │  ┌────────┴─────────┐  │
-                                              │  │ ReAct agent      │  │
-                                              │  │ over Gemini      │  │
-                                              │  └──────────────────┘  │
-                                              └──────────────────────┘
-```
-
 - **Ingestion** (`atlas-backend/app/rag/`) — column-aware PDF extraction, a
   page-as-parent chunking strategy, and a `HybridStore` (dense cosine + Postgres FTS,
   RRF-fused) over pgvector.
