@@ -13,13 +13,13 @@ and lets you upload documents into the knowledge base.
 
 ## Requirements
 
-- Node.js (the toolchain targets current LTS)
+- [Bun](https://bun.sh) (the toolchain targets `bun@1.3.14`, see `packageManager` in `package.json`)
 - A running [Atlas backend](../atlas-backend) (default `http://localhost:8000`)
 
 ## Setup
 
 ```bash
-npm install
+bun install
 ```
 
 Point the UI at your backend via an environment variable (optional — defaults to
@@ -41,10 +41,10 @@ NEXT_PUBLIC_CHAT_STORAGE=db
 ## Running
 
 ```bash
-npm run dev      # start the dev server (http://localhost:3000)
-npm run build    # production build
-npm run start    # serve the production build
-npm run lint     # lint
+bun dev      # start the dev server (http://localhost:3000)
+bun build    # production build
+bun start    # serve the production build
+bun lint     # lint
 ```
 
 ## How it talks to the backend

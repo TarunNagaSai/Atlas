@@ -136,8 +136,8 @@ uv run python -m uvicorn main:app --reload --port 8000
 
 ```bash
 cd atlas-frontend
-npm install
-npm run dev             # http://localhost:3000
+bun install
+bun dev                 # http://localhost:3000
 ```
 
 The UI defaults to `http://localhost:8000`; override with `NEXT_PUBLIC_API_URL` in
